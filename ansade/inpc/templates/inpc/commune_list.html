@@ -1,0 +1,41 @@
+{% extends 'inpc/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Communes</h1>
+    <a href="{% url 'commune_create' %}" class="btn btn-primary mb-3">
+        <i class="fas fa-plus"></i> Ajouter une Commune
+    </a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Nom</th>
+                <th>Moughata</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for commune in communes %}
+            <tr>
+                <td>{{ commune.code }}</td>
+                <td>{{ commune.name }}</td>
+                <td>{{ commune.moughata.label }}</td>
+                <td>
+                    <a href="{% url 'commune_update' commune.id %}" class="btn btn-sm btn-warning">
+                        <i class="fas fa-edit"></i> Modifier
+                    </a>
+                    <a href="{% url 'commune_delete' commune.id %}" class="btn btn-sm btn-danger">
+                        <i class="fas fa-trash"></i> Supprimer
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4">Aucune commune trouvée.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

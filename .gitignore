@@ -1,0 +1,24 @@
+# Environnement Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+
+# Environnement virtuel
+venv/
+env/
+
+# Configuration spécifique
+*.env
+
+# Fichiers temporaires et logs
+*.log
+*.pot
+*.pyc
+
+# Fichiers générés
+media/
+staticfiles/
+
+# Fichiers spécifiques à l'IDE
+*.idea/
+.vscode/

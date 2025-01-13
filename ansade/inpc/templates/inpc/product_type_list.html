@@ -1,0 +1,41 @@
+{% extends 'inpc/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Types de Produits</h1>
+    <a href="{% url 'product_type_create' %}" class="btn btn-primary mb-3">
+        <i class="fas fa-plus"></i> Ajouter un Type de Produit
+    </a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Label</th>
+                <th>Description</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product_type in product_types %}
+            <tr>
+                <td>{{ product_type.code }}</td>
+                <td>{{ product_type.label }}</td>
+                <td>{{ product_type.description|truncatewords:10 }}</td>
+                <td>
+                    <a href="{% url 'product_type_update' product_type.id %}" class="btn btn-sm btn-warning">
+                        <i class="fas fa-edit"></i> Modifier
+                    </a>
+                    <a href="{% url 'product_type_delete' product_type.id %}" class="btn btn-sm btn-danger">
+                        <i class="fas fa-trash"></i> Supprimer
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4">Aucun type de produit trouvé.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

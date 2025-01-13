@@ -1,0 +1,39 @@
+{% extends 'inpc/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Wilayas</h1>
+    <a href="{% url 'wilaya_create' %}" class="btn btn-primary mb-3">
+        <i class="fas fa-plus"></i> Ajouter une Wilaya
+    </a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Nom</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for wilaya in wilayas %}
+            <tr>
+                <td>{{ wilaya.code }}</td>
+                <td>{{ wilaya.name }}</td>
+                <td>
+                    <a href="{% url 'wilaya_update' wilaya.id %}" class="btn btn-sm btn-warning">
+                        <i class="fas fa-edit"></i> Modifier
+                    </a>
+                    <a href="{% url 'wilaya_delete' wilaya.id %}" class="btn btn-sm btn-danger">
+                        <i class="fas fa-trash"></i> Supprimer
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="3">Aucune wilaya trouvée.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

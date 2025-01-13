@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">{% if form.instance.pk %}Modifier{% else %}Ajouter{% endif %} un Produit à un Panier</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="{{ form.cart.id_for_label }}" class="form-label">Panier</label>
+            {{ form.cart }}
+        </div>
+        <div class="mb-3">
+            <label for="{{ form.product.id_for_label }}" class="form-label">Produit</label>
+            {{ form.product }}
+        </div>
+        <div class="mb-3">
+            <label for="{{ form.weight.id_for_label }}" class="form-label">Poids</label>
+            {{ form.weight }}
+        </div>
+        <div class="mb-3">
+            <label for="{{ form.date_from.id_for_label }}" class="form-label">Date de début</label>
+            {{ form.date_from }}
+        </div>
+        <div class="mb-3">
+            <label for="{{ form.date_to.id_for_label }}" class="form-label">Date de fin</label>
+            {{ form.date_to }}
+        </div>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+        <a href="{% url 'cart_product_list' %}" class="btn btn-secondary">Annuler</a>
+    </form>
+</div>
+{% endblock %}
+

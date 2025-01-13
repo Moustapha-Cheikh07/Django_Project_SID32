@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Supprimer le Prix du Produit</h1>
+    <p>Êtes-vous sûr de vouloir supprimer le prix du produit "{{ object.product.name }}" pour le point de vente "{{ object.point_of_sale.name }}" ?</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Confirmer la suppression</button>
+        <a href="{% url 'product_price_list' %}" class="btn btn-secondary">Annuler</a>
+    </form>
+</div>
+{% endblock %}
+

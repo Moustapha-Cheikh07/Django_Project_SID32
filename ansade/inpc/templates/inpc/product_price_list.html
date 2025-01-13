@@ -1,0 +1,45 @@
+{% extends 'inpc/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Prix des Produits</h1>
+    <a href="{% url 'product_price_create' %}" class="btn btn-primary mb-3">
+        <i class="fas fa-plus"></i> Ajouter un Prix de Produit
+    </a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Produit</th>
+                <th>Point de Vente</th>
+                <th>Valeur</th>
+                <th>Date de début</th>
+                <th>Date de fin</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product_price in product_prices %}
+            <tr>
+                <td>{{ product_price.product.name }}</td>
+                <td>{{ product_price.point_of_sale.name }}</td>
+                <td>{{ product_price.value }}</td>
+                <td>{{ product_price.date_from }}</td>
+                <td>{{ product_price.date_to|default_if_none:"-" }}</td>
+                <td>
+                    <a href="{% url 'product_price_update' product_price.id %}" class="btn btn-sm btn-warning">
+                        <i class="fas fa-edit"></i> Modifier
+                    </a>
+                    <a href="{% url 'product_price_delete' product_price.id %}" class="btn btn-sm btn-danger">
+                        <i class="fas fa-trash"></i> Supprimer
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6">Aucun prix de produit trouvé.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

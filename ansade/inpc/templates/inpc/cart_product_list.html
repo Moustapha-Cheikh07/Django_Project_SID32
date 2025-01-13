@@ -1,0 +1,45 @@
+{% extends 'inpc/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Produits dans les Paniers</h1>
+    <a href="{% url 'cart_product_create' %}" class="btn btn-primary mb-3">
+        <i class="fas fa-plus"></i> Ajouter un Produit à un Panier
+    </a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Panier</th>
+                <th>Produit</th>
+                <th>Poids</th>
+                <th>Date de début</th>
+                <th>Date de fin</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cart_product in cart_products %}
+            <tr>
+                <td>{{ cart_product.cart.name }}</td>
+                <td>{{ cart_product.product.name }}</td>
+                <td>{{ cart_product.weight }}</td>
+                <td>{{ cart_product.date_from }}</td>
+                <td>{{ cart_product.date_to|default_if_none:"-" }}</td>
+                <td>
+                    <a href="{% url 'cart_product_update' cart_product.id %}" class="btn btn-sm btn-warning">
+                        <i class="fas fa-edit"></i> Modifier
+                    </a>
+                    <a href="{% url 'cart_product_delete' cart_product.id %}" class="btn btn-sm btn-danger">
+                        <i class="fas fa-trash"></i> Supprimer
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6">Aucun produit dans les paniers trouvé.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

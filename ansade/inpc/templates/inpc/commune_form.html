@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">{% if form.instance.pk %}Modifier{% else %}Ajouter{% endif %} une Commune</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="{{ form.code.id_for_label }}" class="form-label">Code</label>
+            {{ form.code }}
+        </div>
+        <div class="mb-3">
+            <label for="{{ form.name.id_for_label }}" class="form-label">Nom</label>
+            {{ form.name }}
+        </div>
+        <div class="mb-3">
+            <label for="{{ form.moughata.id_for_label }}" class="form-label">Moughata</label>
+            {{ form.moughata }}
+        </div>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+        <a href="{% url 'commune_list' %}" class="btn btn-secondary">Annuler</a>
+    </form>
+</div>
+{% endblock %}
+

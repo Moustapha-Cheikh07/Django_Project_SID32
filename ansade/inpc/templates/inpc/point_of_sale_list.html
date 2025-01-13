@@ -1,0 +1,43 @@
+{% extends 'inpc/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Points de Vente</h1>
+    <a href="{% url 'point_of_sale_create' %}" class="btn btn-primary mb-3">
+        <i class="fas fa-plus"></i> Ajouter un Point de Vente
+    </a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Nom</th>
+                <th>Commune</th>
+                <th>GPS</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for point in points_of_sale %}
+            <tr>
+                <td>{{ point.code }}</td>
+                <td>{{ point.name }}</td>
+                <td>{{ point.commune.name }}</td>
+                <td>{{ point.gps_lat }}, {{ point.gps_lon }}</td>
+                <td>
+                    <a href="{% url 'point_of_sale_update' point.id %}" class="btn btn-sm btn-warning">
+                        <i class="fas fa-edit"></i> Modifier
+                    </a>
+                    <a href="{% url 'point_of_sale_delete' point.id %}" class="btn btn-sm btn-danger">
+                        <i class="fas fa-trash"></i> Supprimer
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5">Aucun point de vente trouvé.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

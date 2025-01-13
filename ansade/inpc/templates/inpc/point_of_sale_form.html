@@ -1,0 +1,32 @@
+{% extends 'inpc/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">{% if form.instance.pk %}Modifier{% else %}Ajouter{% endif %} un Point de Vente</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="{{ form.code.id_for_label }}" class="form-label">Code</label>
+            {{ form.code }}
+        </div>
+        <div class="mb-3">
+            <label for="{{ form.name.id_for_label }}" class="form-label">Nom</label>
+            {{ form.name }}
+        </div>
+        <div class="mb-3">
+            <label for="{{ form.gps_lat.id_for_label }}" class="form-label">Latitude GPS</label>
+            {{ form.gps_lat }}
+        </div>
+        <div class="mb-3">
+            <label for="{{ form.gps_lon.id_for_label }}" class="form-label">Longitude GPS</label>
+            {{ form.gps_lon }}
+        </div>
+        <div class="mb-3">
+            <label for="{{ form.commune.id_for_label }}" class="form-label">Commune</label>
+            {{ form.commune }}
+        </div>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+        <a href="{% url 'point_of_sale_list' %}" class="btn btn-secondary">Annuler</a>
+    </form>
+</div>
+{% endblock %}
