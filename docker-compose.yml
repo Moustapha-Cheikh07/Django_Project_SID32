@@ -1,29 +1,39 @@
-version: '3.8'
-
 services:
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:23007
     volumes:
-      - .:/app
+      - ./ansade:/app
     ports:
       - "23007:23007"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      - DATABASE_URL=postgres://ansade_user:ansade_password@db:5432/ansade_db
+      - DATABASE_URL=mysql://django:Medmouna@db:3306/Inpc_db
+    networks:
+      - mynetwork
 
   db:
-    image: postgres:13
+    image: mysql:8.0
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     environment:
-      - POSTGRES_DB=ansade_db
-      - POSTGRES_USER=ansade_user
-      - POSTGRES_PASSWORD=ansade_password
+      - MYSQL_DATABASE=Inpc_db
+      - MYSQL_USER=django
+      - MYSQL_PASSWORD=Medmouna
+      - MYSQL_ROOT_PASSWORD=RootMedmouna
     ports:
-      - "24007:5432"
+      - "24007:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mynetwork
 
 volumes:
-  postgres_data:
+  mysql_data:
 
+networks:
+  mynetwork:
