@@ -1,45 +1,62 @@
 {% extends 'inpc/base.html' %}
 
 {% block content %}
-<div class="container mt-4">
-    <h1 class="mb-4">Produits dans les Paniers</h1>
-    <a href="{% url 'cart_product_create' %}" class="btn btn-primary mb-3">
-        <i class="fas fa-plus"></i> Ajouter un Produit à un Panier
-    </a>
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Panier</th>
-                <th>Produit</th>
-                <th>Poids</th>
-                <th>Date de début</th>
-                <th>Date de fin</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for cart_product in cart_products %}
-            <tr>
-                <td>{{ cart_product.cart.name }}</td>
-                <td>{{ cart_product.product.name }}</td>
-                <td>{{ cart_product.weight }}</td>
-                <td>{{ cart_product.date_from }}</td>
-                <td>{{ cart_product.date_to|default_if_none:"-" }}</td>
-                <td>
-                    <a href="{% url 'cart_product_update' cart_product.id %}" class="btn btn-sm btn-warning">
-                        <i class="fas fa-edit"></i> Modifier
-                    </a>
-                    <a href="{% url 'cart_product_delete' cart_product.id %}" class="btn btn-sm btn-danger">
-                        <i class="fas fa-trash"></i> Supprimer
-                    </a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="6">Aucun produit dans les paniers trouvé.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-box me-2"></i>Produits du Panier
+        </h1>
+        <a href="{% url 'cart_product_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Ajouter un Produit au Panier
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Produit</th>
+                            <th>Panier</th>
+                            <th>Poids</th>
+                            <th>Date début</th>
+                            <th>Date fin</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cart_product in cart_products %}
+                        <tr>
+                            <td>{{ cart_product.product.name }}</td>
+                            <td>{{ cart_product.cart.name }}</td>
+                            <td>{{ cart_product.weight }}</td>
+                            <td>{{ cart_product.date_from|date:"d/m/Y" }}</td>
+                            <td>{{ cart_product.date_to|date:"d/m/Y"|default:"-" }}</td>
+                            <td class="text-end">
+                                <a href="{% url 'cart_product_update' cart_product.id %}" class="btn btn-sm btn-warning me-1">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'cart_product_delete' cart_product.id %}" class="btn btn-sm btn-danger delete-btn">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <div class="text-muted">
+                                    <i class="fas fa-box fa-3x mb-3"></i>
+                                    <p class="mb-0">Aucun produit trouvé dans les paniers.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
+

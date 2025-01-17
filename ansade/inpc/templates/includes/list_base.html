@@ -1,0 +1,74 @@
+{% extends 'inpc/base.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">
+            <i class="fas {% block list_icon %}fa-list{% endblock %} me-2"></i>
+            {% block list_title %}Liste{% endblock %}
+        </h1>
+        <a href="{% block create_url %}#{% endblock %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>
+            {% block create_button_text %}Ajouter{% endblock %}
+        </a>
+    </div>
+
+    <!-- Filters -->
+    {% block filters %}{% endblock %}
+
+    <!-- Table Card -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    {% block table_content %}{% endblock %}
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Delete confirmation
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer cet élément ?')) {
+                e.preventDefault();
+            }
+        });
+    });
+
+    // Table sorting
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+        th.style.cursor = 'pointer';
+        th.addEventListener('click', function() {
+            const table = th.closest('table');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const index = Array.from(th.parentNode.children).indexOf(th);
+            const direction = th.classList.contains('sort-asc') ? -1 : 1;
+
+            rows.sort((a, b) => {
+                const aValue = a.children[index].textContent;
+                const bValue = b.children[index].textContent;
+                return direction * aValue.localeCompare(bValue);
+            });
+
+            tbody.append(...rows);
+            
+            th.closest('tr').querySelectorAll('th').forEach(header => {
+                header.classList.remove('sort-asc', 'sort-desc');
+            });
+            
+            th.classList.toggle('sort-asc', direction === 1);
+            th.classList.toggle('sort-desc', direction === -1);
+        });
+    });
+});
+</script>
+{% endblock %}
+

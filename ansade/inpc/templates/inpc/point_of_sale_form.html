@@ -1,32 +1,87 @@
 {% extends 'inpc/base.html' %}
 
 {% block content %}
-<div class="container mt-4">
-    <h1 class="mb-4">{% if form.instance.pk %}Modifier{% else %}Ajouter{% endif %} un Point de Vente</h1>
-    <form method="post">
-        {% csrf_token %}
-        <div class="mb-3">
-            <label for="{{ form.code.id_for_label }}" class="form-label">Code</label>
-            {{ form.code }}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+            <div class="card">
+                <div class="card-header bg-white py-3">
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-store me-2"></i>
+                        {% if form.instance.pk %}Modifier{% else %}Ajouter{% endif %} un Point de Vente
+                    </h1>
+                </div>
+                <div class="card-body">
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ form.code.id_for_label }}" class="form-label">
+                                Code <span class="text-danger">*</span>
+                            </label>
+                            {{ form.code }}
+                            {% if form.code.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.code.errors|join:", " }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">
+                                Nom <span class="text-danger">*</span>
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.name.errors|join:", " }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.gps_lat.id_for_label }}" class="form-label">
+                                Latitude GPS <span class="text-danger">*</span>
+                            </label>
+                            {{ form.gps_lat }}
+                            {% if form.gps_lat.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.gps_lat.errors|join:", " }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.gps_lon.id_for_label }}" class="form-label">
+                                Longitude GPS <span class="text-danger">*</span>
+                            </label>
+                            {{ form.gps_lon }}
+                            {% if form.gps_lon.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.gps_lon.errors|join:", " }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.commune.id_for_label }}" class="form-label">
+                                Commune <span class="text-danger">*</span>
+                            </label>
+                            {{ form.commune }}
+                            {% if form.commune.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.commune.errors|join:", " }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'point_of_sale_list' %}" class="btn btn-light">
+                                <i class="fas fa-times me-2"></i>Annuler
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Enregistrer
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-        <div class="mb-3">
-            <label for="{{ form.name.id_for_label }}" class="form-label">Nom</label>
-            {{ form.name }}
-        </div>
-        <div class="mb-3">
-            <label for="{{ form.gps_lat.id_for_label }}" class="form-label">Latitude GPS</label>
-            {{ form.gps_lat }}
-        </div>
-        <div class="mb-3">
-            <label for="{{ form.gps_lon.id_for_label }}" class="form-label">Longitude GPS</label>
-            {{ form.gps_lon }}
-        </div>
-        <div class="mb-3">
-            <label for="{{ form.commune.id_for_label }}" class="form-label">Commune</label>
-            {{ form.commune }}
-        </div>
-        <button type="submit" class="btn btn-primary">Enregistrer</button>
-        <a href="{% url 'point_of_sale_list' %}" class="btn btn-secondary">Annuler</a>
-    </form>
+    </div>
 </div>
 {% endblock %}
+
