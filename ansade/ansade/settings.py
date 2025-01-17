@@ -58,12 +58,12 @@ WSGI_APPLICATION = 'ansade.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',  # Utiliser MySQL comme backend
-        'NAME': 'Inpc_db',  # Nom de la base de données
-        'USER': 'root',  # Nom de l'utilisateur MySQL
-        'PASSWORD': 'Medmouna',  # Mot de passe de l'utilisateur MySQL
-        'HOST': '127.0.0.1',  # Utiliser localhost si le serveur MySQL est local
-        'PORT': '3306',  # Le port MySQL par défaut
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'Inpc_db',
+        'USER': 'django',
+        'PASSWORD': 'Medmouna',
+        'HOST': 'db',  # Nom du service dans docker-compose.yml
+        'PORT': '3306',
     }
 }
 

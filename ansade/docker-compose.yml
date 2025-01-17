@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    command: >
+      sh -c "
+      python manage.py makemigrations &&
+      python manage.py migrate &&
+      python manage.py runserver 0.0.0.0:23007
+      "
+    volumes:
+      - .:/app
+    
+    working_dir: /app
+    ports:
+      - "23007:23007"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_HOST=db
+      - DB_NAME=Inpc_db
+      - DB_USER=django
+      - DB_PASSWORD=Medmouna
+    networks:
+      - mynetwork
+
+  db:
+    image: mysql:8.0
+    restart: always
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=Inpc_db
+      - MYSQL_USER=django
+      - MYSQL_PASSWORD=Medmouna
+      - MYSQL_ROOT_PASSWORD=RootMedmouna
+      - TZ=UTC
+    ports:
+      - "24007:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    networks:
+      - mynetwork
+
+volumes:
+  mysql_data:
+
+networks:
+  mynetwork:
