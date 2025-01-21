@@ -1,0 +1,120 @@
+{% extends "inpc/base.html" %}
+
+{% block title %}Import/Export de Données{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h4 mb-0">
+                        <i class="fas fa-exchange-alt me-2"></i>Import/Export de Données
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label for="model" class="form-label">Sélectionner le modèle</label>
+                            <select name="model" id="model" class="form-select form-select-lg" required>
+                                <option value="">Choisir un modèle...</option>
+                                {% for model in models %}
+                                    <option value="{{ model.name }}">{{ model.verbose_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                Sélectionnez le type de données que vous souhaitez importer ou exporter
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="file" class="form-label">Fichier Excel (pour l'import)</label>
+                            <div class="input-group">
+                                <input type="file" name="file" id="file" class="form-control form-control-lg" accept=".xlsx,.xls">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="popover" 
+                                        data-bs-trigger="hover" 
+                                        data-bs-title="Format accepté" 
+                                        data-bs-content="Fichier Excel (.xlsx, .xls)">
+                                    <i class="fas fa-question-circle"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                Pour l'import, utilisez un fichier Excel avec les colonnes appropriées
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <button type="submit" name="action" value="import" class="btn btn-primary btn-lg w-100">
+                                    <i class="fas fa-file-import me-2"></i>Importer
+                                </button>
+                            </div>
+                            <div class="col-md-6">
+                                <button type="submit" name="action" value="export" class="btn btn-secondary btn-lg w-100">
+                                    <i class="fas fa-file-export me-2"></i>Exporter
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Template Download Section -->
+            <div class="card mt-4 shadow-sm">
+                <div class="card-header bg-light">
+                    <h3 class="h5 mb-0">
+                        <i class="fas fa-download me-2"></i>Télécharger les modèles
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for model in models %}
+                        <a href="{% url 'download_template' model.name %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">{{ model.verbose_name }}</h6>
+                                <small class="text-muted">Modèle pour l'import de données</small>
+                            </div>
+                            <i class="fas fa-download"></i>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(event) {
+        if (event.submitter.value === 'import' && !document.getElementById('file').value) {
+            event.preventDefault();
+            alert('Veuillez sélectionner un fichier pour l'import');
+            return;
+        }
+        
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+
+    // File input enhancement
+    const fileInput = document.getElementById('file');
+    fileInput.addEventListener('change', function(e) {
+        const fileName = e.target.files[0]?.name;
+        if (fileName) {
+            const fileSize = (e.target.files[0].size / 1024 / 1024).toFixed(2);
+            this.nextElementSibling.textContent = `${fileName} (${fileSize} MB)`;
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

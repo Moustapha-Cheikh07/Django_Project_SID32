@@ -1,353 +1,291 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" class="h-100">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ANSADE - INPC{% endblock %}</title>
+    
+    <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome 6 -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
     <style>
         :root {
-            --primary-color: #2563eb;
-            --secondary-color: #475569;
-            --success-color: #16a34a;
-            --warning-color: #ca8a04;
-            --danger-color: #dc2626;
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #3498db;
         }
 
         body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background-color: #f8fafc;
+            min-height: 100vh;
             padding-top: 60px;
-        }
-
-        .navbar {
-            background: linear-gradient(135deg, var(--primary-color), #1e40af);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .navbar-brand {
-            font-weight: 600;
-            font-size: 1.5rem;
-            color: white !important;
+            background-color: #f8f9fa;
         }
 
         .sidebar {
-            background: linear-gradient(180deg, #fff9c4, #fff59d);
-            box-shadow: 2px 0 4px rgba(0,0,0,0.05);
-            height: calc(100vh - 60px);
             position: fixed;
             top: 60px;
+            bottom: 0;
             left: 0;
-            width: 250px;
-            transition: all 0.3s ease;
             z-index: 100;
+            padding: 48px 0 0;
+            box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+            background-color: var(--primary-color);
+            transition: all 0.3s;
         }
 
-        .sidebar .nav-link {
-            color: var(--secondary-color);
-            padding: 0.75rem 1.25rem;
-            border-radius: 0.5rem;
-            margin: 0.25rem 0.75rem;
-            transition: all 0.2s ease;
+        .sidebar-sticky {
+            position: relative;
+            top: 0;
+            height: calc(100vh - 48px);
+            padding-top: .5rem;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
 
-        .sidebar .nav-link:hover {
-            background-color: rgba(0,0,0,0.05);
-            color: var(--primary-color);
+        .navbar {
+            background-color: var(--primary-color) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
         }
 
-        .sidebar .nav-link.active {
-            background-color: rgba(0,0,0,0.1);
-            color: var(--primary-color);
-            font-weight: 500;
+        .nav-link {
+            color: rgba(255,255,255,.8) !important;
+            transition: all 0.3s;
         }
 
-        .main-content {
-            margin-left: 250px;
-            padding: 2rem;
-            transition: all 0.3s ease;
+        .nav-link:hover {
+            color: white !important;
+            background-color: var(--secondary-color);
         }
 
         .card {
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
             border: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            margin-bottom: 1rem;
+            transition: transform 0.2s;
         }
 
         .card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        .btn {
-            font-weight: 500;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            transition: all 0.2s ease;
         }
 
         .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-
-        .btn-primary:hover {
-            background-color: #1e40af;
-            border-color: #1e40af;
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
         }
 
         .table {
-            background: white;
+            background-color: white;
             border-radius: 0.5rem;
             overflow: hidden;
         }
 
-        .table thead th {
-            background-color: #f8fafc;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.875rem;
-            letter-spacing: 0.05em;
+        .loading-spinner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+            display: none;
         }
 
-        .form-control, .form-select {
-            border-radius: 0.5rem;
-            border: 1px solid #e2e8f0;
-            padding: 0.625rem 0.75rem;
-        }
-
-        .form-control:focus, .form-select:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
-        }
-
-        .alert {
-            border-radius: 0.5rem;
-            border: none;
-            margin-bottom: 1rem;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #1a1a1a;
+                color: #ffffff;
             }
 
-            .sidebar.show {
-                transform: translateX(0);
+            .card {
+                background-color: #2d2d2d;
             }
 
-            .main-content {
-                margin-left: 0;
+            .table {
+                background-color: #2d2d2d;
+                color: #ffffff;
             }
         }
     </style>
-    {% block extra_css %}{% endblock %}
 </head>
 <body>
     <!-- Loading Spinner -->
-    <!--<div class="loading-spinner">
+    <div class="loading-spinner">
         <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Chargement...</span>
+            <span class="visually-hidden">Loading...</span>
         </div>
-    </div>-->
+    </div>
 
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top">
         <div class="container-fluid">
-            <button class="navbar-toggler border-0" type="button" id="sidebarToggle">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <a class="navbar-brand" href="{% url 'home' %}">
-                <i class="fas fa-chart-line me-2"></i>ANSADE - INPC
+            <a class="navbar-brand d-flex align-items-center" href="{% url 'home' %}">
+                <i class="fas fa-chart-line me-2"></i>
+                ANSADE - INPC
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse" id="navbarContent">
-                <ul class="navbar-nav me-auto">
+            <div class="collapse navbar-collapse" id="navbarCollapse">
+                <ul class="navbar-nav me-auto mb-2 mb-md-0">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'product_price_list' %}">Prix</a>
+                        <a class="nav-link d-flex align-items-center" href="{% url 'product_price_list' %}">
+                            <i class="fas fa-tag me-2"></i>Prix
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'cart_list' %}">Panier</a>
+                        <a class="nav-link d-flex align-items-center" href="{% url 'cart_list' %}">
+                            <i class="fas fa-shopping-cart me-2"></i>Panier
+                        </a>
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                            Configurations
+                            <i class="fas fa-cog me-2"></i>Configurations
                         </a>
                         <ul class="dropdown-menu">
-                            <li><h6 class="dropdown-header">Gestion des ventes</h6></li>
-                            <li><a class="dropdown-item" href="{% url 'point_of_sale_list' %}">Points de vente</a></li>
-                            <li><a class="dropdown-item" href="{% url 'product_list' %}">Produits</a></li>
-                            <li><div class="dropdown-divider"></div></li>
-                            <li><h6 class="dropdown-header">Structures administratives</h6></li>
-                            <li><a class="dropdown-item" href="{% url 'wilaya_list' %}">Wilayas</a></li>
-                            <li><a class="dropdown-item" href="{% url 'moughata_list' %}">Moughatas</a></li>
-                            <li><a class="dropdown-item" href="{% url 'commune_list' %}">Communes</a></li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'point_of_sale_list' %}">
+                                    <i class="fas fa-store me-2"></i>Points de vente
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'product_list' %}">
+                                    <i class="fas fa-box me-2"></i>Produits
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'cart_product_list' %}">
+                                    <i class="fas fa-shopping-basket me-2"></i>Paniers des Produits
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'administrative_structures' %}">
+                                    <i class="fas fa-building me-2"></i>Structures administratives
+                                </a>
+                            </li>
                         </ul>
                     </li>
-                    <!--<li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user-circle me-1"></i>
-                            <span>Utilisateur</span>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profil</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Paramètres</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-sign-out-alt me-2"></i>Déconnexion</a></li>
-                        </ul>
-                    </li>-->
+                </ul>
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-user-circle me-2"></i>{{ user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'logout' %}">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'login' %}">
+                                <i class="fas fa-sign-in-alt me-2"></i>Connexion
+                            </a>
+                        </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
     </nav>
 
-    <nav id="sidebar" class="sidebar">
+    <!-- Sidebar -->
+    <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block sidebar collapse">
         <div class="position-sticky pt-3">
             <ul class="nav flex-column">
                 <li class="nav-item">
-                    <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'home' %}">
-                        <i class="fas fa-home me-2"></i>Accueil
-                    </a>
-                </li>
-                
-                <!-- Gestion des prix -->
-                <li class="nav-item">
-                    <a class="nav-link {% if 'product_price' in request.resolver_match.url_name %}active{% endif %}" 
-                       href="{% url 'product_price_list' %}">
-                        <i class="fas fa-tag me-2"></i>Prix des produits
-                    </a>
-                </li>
-
-                <!-- Gestion des paniers -->
-                <li class="nav-item">
-                    <a class="nav-link {% if 'cart' in request.resolver_match.url_name %}active{% endif %}" 
-                       href="{% url 'cart_list' %}">
-                        <i class="fas fa-shopping-cart me-2"></i>Paniers
+                    <a class="nav-link" href="{% url 'product_price_list' %}">
+                        <i class="fas fa-tag me-2"></i>Prix
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {% if 'cart_product' in request.resolver_match.url_name %}active{% endif %}" 
-                       href="{% url 'cart_product_list' %}">
-                        <i class="fas fa-cart-plus me-2"></i>Produits des paniers
-                    </a>
-                </li>
-
-                <!-- Gestion des produits -->
-                <li class="nav-item">
-                    <a class="nav-link {% if 'product_type' in request.resolver_match.url_name %}active{% endif %}" 
-                       href="{% url 'product_type_list' %}">
-                        <i class="fas fa-tags me-2"></i>Types de produits
+                    <a class="nav-link" href="{% url 'cart_list' %}">
+                        <i class="fas fa-shopping-cart me-2"></i>Panier
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {% if request.resolver_match.url_name in 'product_list,product_create,product_update,product_delete' %}active{% endif %}" 
-                       href="{% url 'product_list' %}">
-                        <i class="fas fa-box me-2"></i>Produits
-                    </a>
-                </li>
-
-                <!-- Points de vente -->
-                <li class="nav-item">
-                    <a class="nav-link {% if 'point_of_sale' in request.resolver_match.url_name %}active{% endif %}" 
-                       href="{% url 'point_of_sale_list' %}">
+                    <a class="nav-link" href="{% url 'point_of_sale_list' %}">
                         <i class="fas fa-store me-2"></i>Points de vente
                     </a>
                 </li>
-
-                <!-- Structure administrative -->
                 <li class="nav-item">
-                    <a class="nav-link {% if 'wilaya' in request.resolver_match.url_name %}active{% endif %}" 
-                       href="{% url 'wilaya_list' %}">
-                        <i class="fas fa-map me-2"></i>Wilayas
+                    <a class="nav-link" href="{% url 'product_list' %}">
+                        <i class="fas fa-box me-2"></i>Produits
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {% if 'moughata' in request.resolver_match.url_name %}active{% endif %}" 
-                       href="{% url 'moughata_list' %}">
-                        <i class="fas fa-map-marked-alt me-2"></i>Moughatas
+                    <a class="nav-link" href="{% url 'administrative_structures' %}">
+                        <i class="fas fa-building me-2"></i>Structures administratives
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {% if 'commune' in request.resolver_match.url_name %}active{% endif %}" 
-                       href="{% url 'commune_list' %}">
-                        <i class="fas fa-map-marker-alt me-2"></i>Communes
+                    <a class="nav-link" href="{% url 'filter_data' %}">
+                        <i class="fas fa-filter me-2"></i>Filtrage
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'import_export_data' %}">
+                        <i class="fas fa-exchange-alt me-2"></i>Import/Export
                     </a>
                 </li>
             </ul>
         </div>
     </nav>
 
-    <main class="main-content">
+    <!-- Main Content -->
+    <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
         {% if messages %}
-        <div class="messages">
             {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show mt-3" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
             {% endfor %}
-        </div>
         {% endif %}
-
+        
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- JQuery -->
-    <!--<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>-->
-    <!-- Custom JS -->
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+    
+    <!-- Custom JavaScript -->
     <script>
-        // Sidebar Toggle
-        document.getElementById('sidebarToggle').addEventListener('click', function() {
-            document.querySelector('.sidebar').classList.toggle('show');
-        });
-
-        // Form Enhancement
+        // Show loading spinner during page transitions
         document.addEventListener('DOMContentLoaded', function() {
-            // Add Bootstrap classes to form inputs
-            document.querySelectorAll('input, select, textarea').forEach(function(element) {
-                if (!element.classList.contains('form-control')) {
-                    element.classList.add('form-control');
+            const spinner = document.querySelector('.loading-spinner');
+            
+            document.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A' && !e.target.hasAttribute('data-bs-toggle')) {
+                    spinner.style.display = 'block';
                 }
             });
 
-            // Add loading spinner on form submit
-            document.querySelectorAll('form').forEach(function(form) {
-                form.addEventListener('submit', function() {
-                    const button = form.querySelector('button[type="submit"]');
-                    if (button) {
-                        button.disabled = true;
-                        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Chargement...';
-                    }
-                });
+            document.addEventListener('submit', function(e) {
+                if (e.target.tagName === 'FORM') {
+                    spinner.style.display = 'block';
+                }
             });
 
-            // Delete confirmation
-            document.querySelectorAll('.delete-btn').forEach(function(btn) {
-                btn.addEventListener('click', function(e) {
-                    if (!confirm('Êtes-vous sûr de vouloir supprimer cet élément ?')) {
-                        e.preventDefault();
-                    }
-                });
+            // Initialize tooltips
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Initialize popovers
+            const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+            popoverTriggerList.map(function (popoverTriggerEl) {
+                return new bootstrap.Popover(popoverTriggerEl);
             });
         });
-
-        // Table Enhancement
-        // $('table').addClass('table table-striped table-hover');
-
-        // Tooltips
-        // var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        // var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        //     return new bootstrap.Tooltip(tooltipTriggerEl)
-        // });
     </script>
+    
     {% block extra_js %}{% endblock %}
 </body>
 </html>
-

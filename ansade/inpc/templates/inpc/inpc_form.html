@@ -1,0 +1,106 @@
+{% extends "inpc/base.html" %}
+
+{% block title %}Calculer INPC{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h4 mb-0">
+                        <i class="fas fa-calculator me-2"></i>Calculer l'INPC
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <select name="month" id="month" class="form-select" required>
+                                        <option value="">Sélectionner un mois</option>
+                                        <option value="1">Janvier</option>
+                                        <option value="2">Février</option>
+                                        <option value="3">Mars</option>
+                                        <option value="4">Avril</option>
+                                        <option value="5">Mai</option>
+                                        <option value="6">Juin</option>
+                                        <option value="7">Juillet</option>
+                                        <option value="8">Août</option>
+                                        <option value="9">Septembre</option>
+                                        <option value="10">Octobre</option>
+                                        <option value="11">Novembre</option>
+                                        <option value="12">Décembre</option>
+                                    </select>
+                                    <label for="month">Mois</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="number" class="form-control" id="year" name="year" 
+                                           required min="2000" max="2100" value="{{ current_year }}">
+                                    <label for="year">Année</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-calculator me-2"></i>Calculer
+                            </button>
+                            <button type="reset" class="btn btn-secondary btn-lg">
+                                <i class="fas fa-undo me-2"></i>Réinitialiser
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Information Card -->
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>À propos de l'INPC
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">
+                        L'Indice National des Prix à la Consommation (INPC) est un indicateur économique qui mesure 
+                        l'évolution du niveau moyen des prix des biens et services consommés par les ménages.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+
+    // Set current month and year as default
+    const now = new Date();
+    document.getElementById('month').value = now.getMonth() + 1;
+    document.getElementById('year').value = now.getFullYear();
+
+    // Year input validation
+    const yearInput = document.getElementById('year');
+    yearInput.addEventListener('input', function() {
+        const value = parseInt(this.value);
+        if (value < 2000) this.value = 2000;
+        if (value > 2100) this.value = 2100;
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

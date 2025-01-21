@@ -1,215 +1,623 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
-from .models import ProductType, Product, Wilaya, Moughata, Commune, PointOfSale, Cart, CartProduct, ProductPrice
-from .forms import ProductTypeForm, ProductForm, WilayaForm, MoughataForm, CommuneForm, PointOfSaleForm, CartForm, CartProductForm, ProductPriceForm
+from django.contrib import messages
+from django.http import HttpResponse
+from django.apps import apps
+from .models import *
+from .forms import *
+from .filters import *
+from datetime import datetime
+import pandas as pd
+import io
+import xlsxwriter
 
+@login_required
 def home(request):
-    return render(request, 'inpc/home.html')
+    if not request.user.is_authenticated:  # Vérifie si l'utilisateur n'est pas connecté
+        return redirect('login')  # Redirige vers la page de connexion
+    
+    context = {
+        'total_products': Product.objects.count(),
+        'total_points_of_sale': PointOfSale.objects.count(),
+        'total_carts': Cart.objects.count(),
+        'recent_prices': ProductPrice.objects.order_by('-date_from')[:5],
+    }
+    return render(request, 'inpc/home.html', context)
 
-# ProductType Views
-class ProductTypeListView(ListView):
+@login_required
+def calculate_inpc(request):
+    if request.method == 'POST':
+        try:
+            month = int(request.POST.get('month'))
+            year = int(request.POST.get('year'))
+            date = datetime(year, month, 1)
+
+            total_weighted_price = 0
+            total_weight = 0
+
+            for cart_product in CartProduct.objects.filter(date_from__lte=date, date_to__gte=date):
+                try:
+                    price = ProductPrice.objects.filter(
+                        product=cart_product.product,
+                        point_of_sale=cart_product.cart.point_of_sale,
+                        date_from__lte=date,
+                        date_to__gte=date
+                    ).latest('date_from')
+
+                    total_weighted_price += price.value * cart_product.weight
+                    total_weight += cart_product.weight
+                except ProductPrice.DoesNotExist:
+                    continue
+
+            inpc = total_weighted_price / total_weight if total_weight > 0 else 0
+
+            context = {
+                'inpc': inpc,
+                'month': month,
+                'year': year,
+            }
+            return render(request, 'inpc/inpc_result.html', context)
+        except Exception as e:
+            messages.error(request, f"Erreur lors du calcul de l'INPC : {str(e)}")
+            return redirect('calculate_inpc')
+
+    current_year = datetime.now().year
+    return render(request, 'inpc/inpc_form.html', {'current_year': current_year})
+
+@login_required
+def import_export_data(request):
+    if request.method == 'POST':
+        model_name = request.POST.get('model')
+        action = request.POST.get('action')
+        
+        model_class = apps.get_model('inpc', model_name)
+        
+        if action == 'import':
+            form = ImportForm(request.POST, request.FILES)
+            if form.is_valid():
+                try:
+                    file = request.FILES['file']
+                    df = pd.read_excel(file)
+                    
+                    for _, row in df.iterrows():
+                        model_class.objects.create(**row.to_dict())
+                    
+                    messages.success(request, f'Import réussi pour {model_name}')
+                except Exception as e:
+                    messages.error(request, f"Erreur lors de l'import : {str(e)}")
+            else:
+                messages.error(request, "Formulaire invalide. Veuillez vérifier les données.")
+        
+        elif action == 'export':
+            try:
+                output = io.BytesIO()
+                workbook = xlsxwriter.Workbook(output)
+                worksheet = workbook.add_worksheet()
+                
+                objects = model_class.objects.all()
+                
+                headers = [field.name for field in model_class._meta.fields]
+                for col, header in enumerate(headers):
+                    worksheet.write(0, col, header)
+                
+                for row, obj in enumerate(objects, start=1):
+                    for col, field in enumerate(headers):
+                        worksheet.write(row, col, str(getattr(obj, field)))
+                
+                workbook.close()
+                output.seek(0)
+                
+                response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                response['Content-Disposition'] = f'attachment; filename="{model_name}_{datetime.now().strftime("%Y%m%d")}.xlsx"'
+                
+                return response
+                
+            except Exception as e:
+                messages.error(request, f"Erreur lors de l'export : {str(e)}")
+                return redirect('import_export_data')
+
+    models = [
+        {"name": "ProductType", "verbose_name": "Type de Produit"},
+        {"name": "Product", "verbose_name": "Produit"},
+        {"name": "Wilaya", "verbose_name": "Wilaya"},
+        {"name": "Moughata", "verbose_name": "Moughata"},
+        {"name": "Commune", "verbose_name": "Commune"},
+        {"name": "PointOfSale", "verbose_name": "Point de Vente"},
+        {"name": "Cart", "verbose_name": "Panier"},
+        {"name": "CartProduct", "verbose_name": "Produit du Panier"},
+        {"name": "ProductPrice", "verbose_name": "Prix du Produit"},
+    ]
+    
+    return render(request, 'inpc/import_export.html', {'models': models, 'form': ImportForm()})
+
+
+
+@login_required
+def filter_data(request):
+    selected_model = request.GET.get('model', 'ProductType')
+    selected_column = request.GET.get('column', None)
+    filter_value = request.GET.get('filter_value', None)
+    
+    filter_classes = {
+        'ProductType': ProductTypeFilter,
+        'Product': ProductFilter,
+        'Wilaya': WilayaFilter,
+        'Moughata': MoughataFilter,
+        'Commune': CommuneFilter,
+        'PointOfSale': PointOfSaleFilter,
+        'Cart': CartFilter,
+        'CartProduct': CartProductFilter,
+        'ProductPrice': ProductPriceFilter,
+    }
+    
+    model_class = apps.get_model('inpc', selected_model)
+    filter_class = filter_classes.get(selected_model)
+    
+    if not filter_class:
+        messages.error(request, 'Modèle non trouvé')
+        return redirect('home')
+    
+    queryset = model_class.objects.all()
+    filterset = filter_class(request.GET, queryset=queryset)
+    
+    # Gérer le filtrage par colonne si une colonne et une valeur de filtre sont fournies
+    if selected_column and filter_value:
+        try:
+            queryset = queryset.filter(**{selected_column: filter_value})
+        except Exception as e:
+            messages.error(request, f"Erreur de filtrage : {str(e)}")
+    
+    field_names = [field.name for field in model_class._meta.fields]
+    
+    context = {
+        'models': filter_classes.keys(),
+        'selected_model': selected_model,
+        'filter': filterset,
+        'filtered_data': queryset,
+        'field_names': field_names,
+        'selected_column': selected_column,
+        'filter_value': filter_value,
+    }
+    
+    return render(request, 'inpc/filter_page.html', context)
+
+
+
+@login_required
+def download_template(request, model_name):
+    try:
+        model_class = apps.get_model('inpc', model_name)
+        
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+        worksheet = workbook.add_worksheet()
+        
+        headers = [field.name for field in model_class._meta.fields]
+        for col, header in enumerate(headers):
+            worksheet.write(0, col, header)
+        
+        workbook.close()
+        output.seek(0)
+        
+        response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="{model_name}_template.xlsx"'
+        
+        return response
+        
+    except Exception as e:
+        messages.error(request, f"Erreur lors du téléchargement du modèle : {str(e)}")
+        return redirect('import_export_data')
+
+@login_required
+def administrative_structures(request):
+    wilayas = Wilaya.objects.all()
+    moughatas = Moughata.objects.all()
+    communes = Commune.objects.all()
+
+    context = {
+        'wilayas': wilayas,
+        'moughatas': moughatas,
+        'communes': communes,
+    }
+    return render(request, 'inpc/administrative_structures.html', context)
+
+# Generic views for CRUD operations
+
+class ProductTypeListView(LoginRequiredMixin, ListView):
     model = ProductType
     template_name = 'inpc/product_type_list.html'
     context_object_name = 'product_types'
 
-class ProductTypeCreateView(CreateView):
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        self.filterset = ProductTypeFilter(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filter'] = self.filterset
+        return context
+
+class ProductTypeCreateView(LoginRequiredMixin, CreateView):
     model = ProductType
     form_class = ProductTypeForm
     template_name = 'inpc/product_type_form.html'
     success_url = reverse_lazy('product_type_list')
 
-class ProductTypeUpdateView(UpdateView):
+    def form_valid(self, form):
+        messages.success(self.request, "Type de produit créé avec succès.")
+        return super().form_valid(form)
+
+class ProductTypeUpdateView(LoginRequiredMixin, UpdateView):
     model = ProductType
     form_class = ProductTypeForm
     template_name = 'inpc/product_type_form.html'
     success_url = reverse_lazy('product_type_list')
 
-class ProductTypeDeleteView(DeleteView):
+    def form_valid(self, form):
+        messages.success(self.request, "Type de produit mis à jour avec succès.")
+        return super().form_valid(form)
+
+class ProductTypeDeleteView(LoginRequiredMixin, DeleteView):
     model = ProductType
     template_name = 'inpc/product_type_confirm_delete.html'
     success_url = reverse_lazy('product_type_list')
 
-# Product Views
-class ProductListView(ListView):
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, "Type de produit supprimé avec succès.")
+        return super().delete(request, *args, **kwargs)
+
+class ProductListView(LoginRequiredMixin, ListView):
     model = Product
     template_name = 'inpc/product_list.html'
     context_object_name = 'products'
 
-class ProductCreateView(CreateView):
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        self.filterset = ProductFilter(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filter'] = self.filterset
+        return context
+
+class ProductCreateView(LoginRequiredMixin, CreateView):
     model = Product
     form_class = ProductForm
     template_name = 'inpc/product_form.html'
     success_url = reverse_lazy('product_list')
 
-class ProductUpdateView(UpdateView):
+    def form_valid(self, form):
+        messages.success(self.request, "Produit créé avec succès.")
+        return super().form_valid(form)
+
+class ProductUpdateView(LoginRequiredMixin, UpdateView):
     model = Product
     form_class = ProductForm
     template_name = 'inpc/product_form.html'
     success_url = reverse_lazy('product_list')
 
-class ProductDeleteView(DeleteView):
+    def form_valid(self, form):
+        messages.success(self.request, "Produit mis à jour avec succès.")
+        return super().form_valid(form)
+
+class ProductDeleteView(LoginRequiredMixin, DeleteView):
     model = Product
     template_name = 'inpc/product_confirm_delete.html'
     success_url = reverse_lazy('product_list')
 
-# Wilaya Views
-class WilayaListView(ListView):
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, "Produit supprimé avec succès.")
+        return super().delete(request, *args, **kwargs)
+
+class WilayaListView(LoginRequiredMixin, ListView):
     model = Wilaya
     template_name = 'inpc/wilaya_list.html'
     context_object_name = 'wilayas'
 
-class WilayaCreateView(CreateView):
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        self.filterset = WilayaFilter(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filter'] = self.filterset
+        return context
+
+class WilayaCreateView(LoginRequiredMixin, CreateView):
     model = Wilaya
     form_class = WilayaForm
     template_name = 'inpc/wilaya_form.html'
     success_url = reverse_lazy('wilaya_list')
 
-class WilayaUpdateView(UpdateView):
+    def form_valid(self, form):
+        messages.success(self.request, "Wilaya créée avec succès.")
+        return super().form_valid(form)
+
+class WilayaUpdateView(LoginRequiredMixin, UpdateView):
     model = Wilaya
     form_class = WilayaForm
     template_name = 'inpc/wilaya_form.html'
     success_url = reverse_lazy('wilaya_list')
 
-class WilayaDeleteView(DeleteView):
+    def form_valid(self, form):
+        messages.success(self.request, "Wilaya mise à jour avec succès.")
+        return super().form_valid(form)
+
+class WilayaDeleteView(LoginRequiredMixin, DeleteView):
     model = Wilaya
     template_name = 'inpc/wilaya_confirm_delete.html'
     success_url = reverse_lazy('wilaya_list')
 
-# Moughata Views
-class MoughataListView(ListView):
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, "Wilaya supprimée avec succès.")
+        return super().delete(request, *args, **kwargs)
+
+class MoughataListView(LoginRequiredMixin, ListView):
     model = Moughata
     template_name = 'inpc/moughata_list.html'
     context_object_name = 'moughatas'
 
-class MoughataCreateView(CreateView):
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        self.filterset = MoughataFilter(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filter'] = self.filterset
+        return context
+
+class MoughataCreateView(LoginRequiredMixin, CreateView):
     model = Moughata
     form_class = MoughataForm
     template_name = 'inpc/moughata_form.html'
     success_url = reverse_lazy('moughata_list')
 
-class MoughataUpdateView(UpdateView):
+    def form_valid(self, form):
+        messages.success(self.request, "Moughata créée avec succès.")
+        return super().form_valid(form)
+
+class MoughataUpdateView(LoginRequiredMixin, UpdateView):
     model = Moughata
     form_class = MoughataForm
     template_name = 'inpc/moughata_form.html'
     success_url = reverse_lazy('moughata_list')
 
-class MoughataDeleteView(DeleteView):
+    def form_valid(self, form):
+        messages.success(self.request, "Moughata mise à jour avec succès.")
+        return super().form_valid(form)
+
+class MoughataDeleteView(LoginRequiredMixin, DeleteView):
     model = Moughata
     template_name = 'inpc/moughata_confirm_delete.html'
     success_url = reverse_lazy('moughata_list')
 
-# Commune Views
-class CommuneListView(ListView):
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, "Moughata supprimée avec succès.")
+        return super().delete(request, *args, **kwargs)
+
+class CommuneListView(LoginRequiredMixin, ListView):
     model = Commune
     template_name = 'inpc/commune_list.html'
     context_object_name = 'communes'
 
-class CommuneCreateView(CreateView):
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        self.filterset = CommuneFilter(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filter'] = self.filterset
+        return context
+
+class CommuneCreateView(LoginRequiredMixin, CreateView):
     model = Commune
     form_class = CommuneForm
     template_name = 'inpc/commune_form.html'
     success_url = reverse_lazy('commune_list')
 
-class CommuneUpdateView(UpdateView):
+    def form_valid(self, form):
+        messages.success(self.request, "Commune créée avec succès.")
+        return super().form_valid(form)
+
+class CommuneUpdateView(LoginRequiredMixin, UpdateView):
     model = Commune
     form_class = CommuneForm
     template_name = 'inpc/commune_form.html'
     success_url = reverse_lazy('commune_list')
 
-class CommuneDeleteView(DeleteView):
+    def form_valid(self, form):
+        messages.success(self.request, "Commune mise à jour avec succès.")
+        return super().form_valid(form)
+
+class CommuneDeleteView(LoginRequiredMixin, DeleteView):
     model = Commune
     template_name = 'inpc/commune_confirm_delete.html'
     success_url = reverse_lazy('commune_list')
 
-# PointOfSale Views
-class PointOfSaleListView(ListView):
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, "Commune supprimée avec succès.")
+        return super().delete(request, *args, **kwargs)
+
+class PointOfSaleListView(LoginRequiredMixin, ListView):
     model = PointOfSale
     template_name = 'inpc/point_of_sale_list.html'
     context_object_name = 'points_of_sale'
 
-class PointOfSaleCreateView(CreateView):
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        self.filterset = PointOfSaleFilter(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filter'] = self.filterset
+        return context
+
+class PointOfSaleCreateView(LoginRequiredMixin, CreateView):
     model = PointOfSale
     form_class = PointOfSaleForm
     template_name = 'inpc/point_of_sale_form.html'
     success_url = reverse_lazy('point_of_sale_list')
 
-class PointOfSaleUpdateView(UpdateView):
+    def form_valid(self, form):
+        messages.success(self.request, "Point de vente créé avec succès.")
+        return super().form_valid(form)
+
+class PointOfSaleUpdateView(LoginRequiredMixin, UpdateView):
     model = PointOfSale
     form_class = PointOfSaleForm
     template_name = 'inpc/point_of_sale_form.html'
     success_url = reverse_lazy('point_of_sale_list')
 
-class PointOfSaleDeleteView(DeleteView):
+    def form_valid(self, form):
+        messages.success(self.request, "Point de vente mis à jour avec succès.")
+        return super().form_valid(form)
+
+class PointOfSaleDeleteView(LoginRequiredMixin, DeleteView):
     model = PointOfSale
     template_name = 'inpc/point_of_sale_confirm_delete.html'
     success_url = reverse_lazy('point_of_sale_list')
 
-# Cart Views
-class CartListView(ListView):
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, "Point de vente supprimé avec succès.")
+        return super().delete(request, *args, **kwargs)
+
+class CartListView(LoginRequiredMixin, ListView):
     model = Cart
     template_name = 'inpc/cart_list.html'
     context_object_name = 'carts'
 
-class CartCreateView(CreateView):
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        self.filterset = CartFilter(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filter'] = self.filterset
+        return context
+
+class CartCreateView(LoginRequiredMixin, CreateView):
     model = Cart
     form_class = CartForm
     template_name = 'inpc/cart_form.html'
     success_url = reverse_lazy('cart_list')
 
-class CartUpdateView(UpdateView):
+    def form_valid(self, form):
+        messages.success(self.request, "Panier créé avec succès.")
+        return super().form_valid(form)
+
+class CartUpdateView(LoginRequiredMixin, UpdateView):
     model = Cart
     form_class = CartForm
     template_name = 'inpc/cart_form.html'
     success_url = reverse_lazy('cart_list')
 
-class CartDeleteView(DeleteView):
+    def form_valid(self, form):
+        messages.success(self.request, "Panier mis à jour avec succès.")
+        return super().form_valid(form)
+
+class CartDeleteView(LoginRequiredMixin, DeleteView):
     model = Cart
     template_name = 'inpc/cart_confirm_delete.html'
     success_url = reverse_lazy('cart_list')
 
-# CartProduct Views
-class CartProductListView(ListView):
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, "Panier supprimé avec succès.")
+        return super().delete(request, *args, **kwargs)
+
+class CartProductListView(LoginRequiredMixin, ListView):
     model = CartProduct
     template_name = 'inpc/cart_product_list.html'
     context_object_name = 'cart_products'
 
-class CartProductCreateView(CreateView):
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        self.filterset = CartProductFilter(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filter'] = self.filterset
+        return context
+
+class CartProductCreateView(LoginRequiredMixin, CreateView):
     model = CartProduct
     form_class = CartProductForm
     template_name = 'inpc/cart_product_form.html'
     success_url = reverse_lazy('cart_product_list')
 
-class CartProductUpdateView(UpdateView):
+    def form_valid(self, form):
+        messages.success(self.request, "Produit du panier créé avec succès.")
+        return super().form_valid(form)
+
+class CartProductUpdateView(LoginRequiredMixin, UpdateView):
     model = CartProduct
     form_class = CartProductForm
     template_name = 'inpc/cart_product_form.html'
     success_url = reverse_lazy('cart_product_list')
 
-class CartProductDeleteView(DeleteView):
+    def form_valid(self, form):
+        messages.success(self.request, "Produit du panier mis à jour avec succès.")
+        return super().form_valid(form)
+
+class CartProductDeleteView(LoginRequiredMixin, DeleteView):
     model = CartProduct
     template_name = 'inpc/cart_product_confirm_delete.html'
     success_url = reverse_lazy('cart_product_list')
 
-# ProductPrice Views
-class ProductPriceListView(ListView):
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, "Produit du panier supprimé avec succès.")
+        return super().delete(request, *args, **kwargs)
+
+class ProductPriceListView(LoginRequiredMixin, ListView):
     model = ProductPrice
     template_name = 'inpc/product_price_list.html'
     context_object_name = 'product_prices'
 
-class ProductPriceCreateView(CreateView):
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        self.filterset = ProductPriceFilter(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filter'] = self.filterset
+        return context
+
+class ProductPriceCreateView(LoginRequiredMixin, CreateView):
     model = ProductPrice
     form_class = ProductPriceForm
     template_name = 'inpc/product_price_form.html'
     success_url = reverse_lazy('product_price_list')
 
-class ProductPriceUpdateView(UpdateView):
+    def form_valid(self, form):
+        messages.success(self.request, "Prix du produit créé avec succès.")
+        return super().form_valid(form)
+
+class ProductPriceUpdateView(LoginRequiredMixin, UpdateView):
     model = ProductPrice
     form_class = ProductPriceForm
     template_name = 'inpc/product_price_form.html'
     success_url = reverse_lazy('product_price_list')
 
-class ProductPriceDeleteView(DeleteView):
+    def form_valid(self, form):
+        messages.success(self.request, "Prix du produit mis à jour avec succès.")
+        return super().form_valid(form)
+
+class ProductPriceDeleteView(LoginRequiredMixin, DeleteView):
     model = ProductPrice
     template_name = 'inpc/product_price_confirm_delete.html'
     success_url = reverse_lazy('product_price_list')
+
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, "Prix du produit supprimé avec succès.")
+        return super().delete(request, *args, **kwargs)

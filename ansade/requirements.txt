@@ -1,2 +1,6 @@
 Django==4.2
 mysqlclient
+openpyxl
+django-filter
+pandas
+xlsxwriter

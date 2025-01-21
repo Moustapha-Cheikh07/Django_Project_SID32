@@ -1,13 +1,13 @@
 import os
 from pathlib import Path
 
-
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'your-secret-key-here'
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'inpc',
+    'django_filters',
 ]
 
 MIDDLEWARE = [
@@ -31,12 +32,10 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'ansade.urls'
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'inpc', 'templates','inpc')],  # Ajoutez ce chemin
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -48,11 +47,6 @@ TEMPLATES = [
         },
     },
 ]
-
-
-
-
-
 
 WSGI_APPLICATION = 'ansade.wsgi.application'
 
@@ -66,7 +60,6 @@ DATABASES = {
         'PORT': '3306',
     }
 }
-
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -96,3 +89,9 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]

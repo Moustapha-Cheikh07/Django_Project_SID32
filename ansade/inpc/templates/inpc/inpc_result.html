@@ -1,0 +1,18 @@
+{% extends "inpc/base.html" %}
+
+{% block title %}Résultat INPC{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Résultat INPC</h2>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info">
+            <h4>INPC pour {{ month }}/{{ year }}</h4>
+            <p class="display-4">{{ inpc|floatformat:2 }}</p>
+        </div>
+        <a href="{% url 'calculate_inpc' %}" class="btn btn-primary">Nouveau Calcul</a>
+    </div>
+</div>
+{% endblock %}

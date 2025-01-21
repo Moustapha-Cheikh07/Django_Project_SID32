@@ -1,71 +1,190 @@
-{% extends 'inpc/base.html' %}
+{% extends "inpc/base.html" %}
+
+{% block title %}Accueil - INPC{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <!-- Welcome Section -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-primary text-white">
-                <div class="card-body p-4">
-                    <h1 class="display-4 mb-3">Bienvenue sur INPC</h1>
-                    <p class="lead mb-0">Système de gestion de l'Indice National des Prix à la Consommation</p>
+<div class="container-fluid py-4">
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-1">Total Produits</h6>
+                            <h2 class="display-6 mb-0">{{ total_products }}</h2>
+                        </div>
+                        <div class="icon-circle bg-white text-primary">
+                            <i class="fas fa-box fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a href="{% url 'product_list' %}" class="text-white text-decoration-none">Voir détails</a>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-1">Points de Vente</h6>
+                            <h2 class="display-6 mb-0">{{ total_points_of_sale }}</h2>
+                        </div>
+                        <div class="icon-circle bg-white text-success">
+                            <i class="fas fa-store fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a href="{% url 'point_of_sale_list' %}" class="text-white text-decoration-none">Voir détails</a>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-warning text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-1">Total Paniers</h6>
+                            <h2 class="display-6 mb-0">{{ total_carts }}</h2>
+                        </div>
+                        <div class="icon-circle bg-white text-warning">
+                            <i class="fas fa-shopping-cart fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a href="{% url 'cart_list' %}" class="text-white text-decoration-none">Voir détails</a>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-1">INPC</h6>
+                            <h2 class="display-6 mb-0">Calculer</h2>
+                        </div>
+                        <div class="icon-circle bg-white text-info">
+                            <i class="fas fa-calculator fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a href="{% url 'calculate_inpc' %}" class="text-white text-decoration-none">Calculer INPC</a>
+                    <i class="fas fa-arrow-right"></i>
                 </div>
             </div>
         </div>
     </div>
 
-
-    <!-- Main Actions -->
+    <!-- Recent Prices -->
     <div class="row">
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card h-100">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Prix Récents</h5>
+                </div>
                 <div class="card-body">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
-                            <i class="fas fa-tag fa-2x text-primary"></i>
-                        </div>
-                        <h5 class="card-title mb-0">Gestion des Prix</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Produit</th>
+                                    <th>Point de Vente</th>
+                                    <th>Prix</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for price in recent_prices %}
+                                <tr>
+                                    <td>{{ price.product.name }}</td>
+                                    <td>{{ price.point_of_sale.name }}</td>
+                                    <td>{{ price.value }}</td>
+                                    <td>{{ price.date_from|date:"d/m/Y" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center">Aucun prix récent</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
-                    <p class="card-text">Gérez les prix des produits dans les différents points de vente.</p>
-                    <a href="{% url 'product_price_list' %}" class="btn btn-primary w-100">
-                        <i class="fas fa-arrow-right me-2"></i>Accéder
-                    </a>
                 </div>
             </div>
         </div>
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="rounded-circle bg-success bg-opacity-10 p-3 me-3">
-                            <i class="fas fa-shopping-cart fa-2x text-success"></i>
-                        </div>
-                        <h5 class="card-title mb-0">Gestion des Paniers</h5>
-                    </div>
-                    <p class="card-text">Gérez les paniers de produits et leurs pondérations.</p>
-                    <a href="{% url 'cart_list' %}" class="btn btn-success w-100">
-                        <i class="fas fa-arrow-right me-2"></i>Accéder
-                    </a>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Actions Rapides</h5>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card h-100">
                 <div class="card-body">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="rounded-circle bg-warning bg-opacity-10 p-3 me-3">
-                            <i class="fas fa-cogs fa-2x text-warning"></i>
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <a href="{% url 'product_price_create' %}" class="card text-decoration-none h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-plus-circle fa-3x text-primary mb-3"></i>
+                                    <h5>Ajouter un Prix</h5>
+                                    <p class="text-muted mb-0">Enregistrer un nouveau prix pour un produit</p>
+                                </div>
+                            </a>
                         </div>
-                        <h5 class="card-title mb-0">Configurations</h5>
+                        <div class="col-md-4">
+                            <a href="{% url 'cart_create' %}" class="card text-decoration-none h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-shopping-basket fa-3x text-success mb-3"></i>
+                                    <h5>Créer un Panier</h5>
+                                    <p class="text-muted mb-0">Définir un nouveau panier de produits</p>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{% url 'import_export_data' %}" class="card text-decoration-none h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-file-import fa-3x text-warning mb-3"></i>
+                                    <h5>Import/Export</h5>
+                                    <p class="text-muted mb-0">Gérer les données en masse</p>
+                                </div>
+                            </a>
+                        </div>
                     </div>
-                    <p class="card-text">Gérez les points de vente, les produits et les structures administratives.</p>
-                    <a href="{% url 'point_of_sale_list' %}" class="btn btn-warning w-100">
-                        <i class="fas fa-arrow-right me-2"></i>Accéder
-                    </a>
                 </div>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
+<style>
+.icon-circle {
+    height: 64px;
+    width: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card {
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+</style>
+{% endblock %}

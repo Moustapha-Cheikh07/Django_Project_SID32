@@ -1,0 +1,36 @@
+{% extends "inpc/base.html" %}
+
+{% block title %}Structures Administratives{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="my-4">Structures Administratives</h1>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Wilayas</h5>
+                    <a href="{% url 'wilaya_list' %}" class="btn btn-primary">Voir les Wilayas</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Moughatas</h5>
+                    <a href="{% url 'moughata_list' %}" class="btn btn-primary">Voir les Moughatas</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Communes</h5>
+                    <a href="{% url 'commune_list' %}" class="btn btn-primary">Voir les Communes</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
