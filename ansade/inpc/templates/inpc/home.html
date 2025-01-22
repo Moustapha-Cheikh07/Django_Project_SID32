@@ -87,44 +87,7 @@
         </div>
     </div>
 
-    <!-- Recent Prices -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-white">
-                    <h5 class="mb-0">Prix Récents</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Produit</th>
-                                    <th>Point de Vente</th>
-                                    <th>Prix</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for price in recent_prices %}
-                                <tr>
-                                    <td>{{ price.product.name }}</td>
-                                    <td>{{ price.point_of_sale.name }}</td>
-                                    <td>{{ price.value }}</td>
-                                    <td>{{ price.date_from|date:"d/m/Y" }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="4" class="text-center">Aucun prix récent</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    
 
     <!-- Quick Actions -->
     <div class="row mt-4">

@@ -4,7 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from django.contrib import messages
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.apps import apps
 from .models import *
 from .forms import *
@@ -69,56 +69,6 @@ def calculate_inpc(request):
 
 @login_required
 def import_export_data(request):
-    if request.method == 'POST':
-        model_name = request.POST.get('model')
-        action = request.POST.get('action')
-        
-        model_class = apps.get_model('inpc', model_name)
-        
-        if action == 'import':
-            form = ImportForm(request.POST, request.FILES)
-            if form.is_valid():
-                try:
-                    file = request.FILES['file']
-                    df = pd.read_excel(file)
-                    
-                    for _, row in df.iterrows():
-                        model_class.objects.create(**row.to_dict())
-                    
-                    messages.success(request, f'Import réussi pour {model_name}')
-                except Exception as e:
-                    messages.error(request, f"Erreur lors de l'import : {str(e)}")
-            else:
-                messages.error(request, "Formulaire invalide. Veuillez vérifier les données.")
-        
-        elif action == 'export':
-            try:
-                output = io.BytesIO()
-                workbook = xlsxwriter.Workbook(output)
-                worksheet = workbook.add_worksheet()
-                
-                objects = model_class.objects.all()
-                
-                headers = [field.name for field in model_class._meta.fields]
-                for col, header in enumerate(headers):
-                    worksheet.write(0, col, header)
-                
-                for row, obj in enumerate(objects, start=1):
-                    for col, field in enumerate(headers):
-                        worksheet.write(row, col, str(getattr(obj, field)))
-                
-                workbook.close()
-                output.seek(0)
-                
-                response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-                response['Content-Disposition'] = f'attachment; filename="{model_name}_{datetime.now().strftime("%Y%m%d")}.xlsx"'
-                
-                return response
-                
-            except Exception as e:
-                messages.error(request, f"Erreur lors de l'export : {str(e)}")
-                return redirect('import_export_data')
-
     models = [
         {"name": "ProductType", "verbose_name": "Type de Produit"},
         {"name": "Product", "verbose_name": "Produit"},
@@ -131,7 +81,118 @@ def import_export_data(request):
         {"name": "ProductPrice", "verbose_name": "Prix du Produit"},
     ]
     
-    return render(request, 'inpc/import_export.html', {'models': models, 'form': ImportForm()})
+    if request.method == 'POST':
+        model_name = request.POST.get('model')
+        action = request.POST.get('action')
+        
+        model = next((m for m in models if m['name'].lower() == model_name.lower()), None)
+        if model:
+            model_class = globals()[model['name']]
+            if action == 'import':
+                return import_data(request, model_class)
+            elif action == 'export':
+                return export_data(request, model_class)
+        
+        messages.error(request, "Modèle invalide sélectionné.")
+    
+    context = {
+        'models': models
+    }
+    return render(request, 'inpc/import_export.html', context)
+
+def import_data(request, model):
+    if 'file' not in request.FILES:
+        messages.error(request, "Veuillez fournir un fichier Excel.")
+        return redirect('import_export_data')
+    
+    excel_file = request.FILES['file']
+    
+    try:
+        df = pd.read_excel(excel_file)
+        
+        for _, row in df.iterrows():
+            data = row.to_dict()
+            
+            # Handle foreign key relationships
+            if model == Product:
+                product_type = ProductType.objects.get(code=data['product_type'])
+                data['product_type'] = product_type
+            elif model == Moughata:
+                wilaya = Wilaya.objects.get(code=data['wilaya'])
+                data['wilaya'] = wilaya
+            elif model == Commune:
+                moughata = Moughata.objects.get(code=data['moughata'])
+                data['moughata'] = moughata
+            elif model == PointOfSale:
+                commune = Commune.objects.get(code=data['commune'])
+                data['commune'] = commune
+            elif model == CartProduct:
+                product = Product.objects.get(code=data['product'])
+                cart = Cart.objects.get(code=data['cart'])
+                data['product'] = product
+                data['cart'] = cart
+            elif model == ProductPrice:
+                product = Product.objects.get(code=data['product'])
+                point_of_sale = PointOfSale.objects.get(code=data['point_of_sale'])
+                data['product'] = product
+                data['point_of_sale'] = point_of_sale
+            
+            model.objects.create(**data)
+        
+        messages.success(request, f"Données importées avec succès pour {model.__name__}")
+    except Exception as e:
+        messages.error(request, f"Erreur lors de l'importation : {str(e)}")
+    
+    return redirect('import_export_data')
+
+def export_data(request, model):
+    queryset = model.objects.all()
+    
+    data = []
+    for obj in queryset:
+        item = {}
+        for field in obj._meta.fields:
+            if field.is_relation:
+                item[field.name] = getattr(obj, field.name).code
+            else:
+                item[field.name] = getattr(obj, field.name)
+        data.append(item)
+    
+    df = pd.DataFrame(data)
+    
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    df.to_excel(writer, index=False, sheet_name='Sheet1')
+    writer.save()
+    output.seek(0)
+    
+    response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename={model.__name__}_export.xlsx'
+    
+    return response
+
+@login_required
+def download_template(request, model_name):
+    models = [ProductType, Product, Wilaya, Moughata, Commune, PointOfSale, Cart, CartProduct, ProductPrice]
+    model = next((m for m in models if m.__name__.lower() == model_name.lower()), None)
+    
+    if not model:
+        messages.error(request, "Modèle invalide")
+        return redirect('import_export_data')
+
+    fields = [field.name for field in model._meta.fields if field.name != 'id']
+    df = pd.DataFrame(columns=fields)
+    
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    df.to_excel(writer, index=False, sheet_name='Sheet1')
+    writer.save()
+    output.seek(0)
+    
+    response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename={model.__name__}_template.xlsx'
+    
+    return response
 
 
 
@@ -186,30 +247,7 @@ def filter_data(request):
 
 
 
-@login_required
-def download_template(request, model_name):
-    try:
-        model_class = apps.get_model('inpc', model_name)
-        
-        output = io.BytesIO()
-        workbook = xlsxwriter.Workbook(output)
-        worksheet = workbook.add_worksheet()
-        
-        headers = [field.name for field in model_class._meta.fields]
-        for col, header in enumerate(headers):
-            worksheet.write(0, col, header)
-        
-        workbook.close()
-        output.seek(0)
-        
-        response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = f'attachment; filename="{model_name}_template.xlsx"'
-        
-        return response
-        
-    except Exception as e:
-        messages.error(request, f"Erreur lors du téléchargement du modèle : {str(e)}")
-        return redirect('import_export_data')
+
 
 @login_required
 def administrative_structures(request):
