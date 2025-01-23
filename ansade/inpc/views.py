@@ -17,36 +17,34 @@ from django.db.models import Avg
 from dateutil.relativedelta import relativedelta
 @login_required
 def home(request):
-    if not request.user.is_authenticated:  # Vérifie si l'utilisateur n'est pas connecté
-        return redirect('login')  # Redirige vers la page de connexion
+    if not request.user.is_authenticated:
+        return redirect('login')
 
     # Calculer l'INPC pour les 4 derniers mois
-    inpc_4_derniers_mois = []
+    inpc_last_4_months = []
     aujourdhui = datetime.today()
 
     for i in range(4):
-        # Calculer la date pour chaque mois précédent en utilisant relativedelta
         date = aujourdhui - relativedelta(months=i)
         mois = date.month
         annee = date.year
 
         # Calculer l'INPC pour ce mois
         valeur_inpc = calculate_inpc_for_date(datetime(annee, mois, 1))
-        inpc_4_derniers_mois.append({
-            'mois': mois,
-            'annee': annee,
+        inpc_last_4_months.append({
+            'month': mois,  # Assurez-vous que les clés correspondent à celles utilisées dans le template
+            'year': annee,
             'inpc': valeur_inpc
         })
 
-    # Ajouter les données au contexte avec des noms en français
-    contexte = {
-        'total_produits': Product.objects.count(),
-        'total_points_de_vente': PointOfSale.objects.count(),
-        'total_paniers': Cart.objects.count(),
-        'prix_recents': ProductPrice.objects.order_by('-date_from')[:5],
-        'inpc_4_derniers_mois': inpc_4_derniers_mois,  # Ajout des données INPC des 4 derniers mois
+    # Ajouter les données au contexte
+    context = {
+        'total_products': Product.objects.count(),
+        'total_points_of_sale': PointOfSale.objects.count(),
+        'total_carts': Cart.objects.count(),
+        'inpc_last_4_months': inpc_last_4_months,  # Assurez-vous que la clé correspond à celle utilisée dans le template
     }
-    return render(request, 'inpc/home.html', contexte)
+    return render(request, 'inpc/home.html', context)
 
 
 def calculate_inpc_for_date(date):
