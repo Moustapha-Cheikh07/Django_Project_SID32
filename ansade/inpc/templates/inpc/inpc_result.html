@@ -3,16 +3,92 @@
 {% block title %}Résultat INPC{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header">
-        <h2>Résultat INPC</h2>
-    </div>
-    <div class="card-body">
-        <div class="alert alert-info">
-            <h4>INPC pour {{ month }}/{{ year }}</h4>
-            <p class="display-4">{{ inpc|floatformat:2 }}</p>
+<div class="container-fluid py-5 bg-light">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+            <div class="card shadow-lg">
+                <div class="card-header bg-success text-white">
+                    <h2 class="h4 mb-0">
+                        <i class="fas fa-chart-line me-2"></i>Résultat INPC
+                    </h2>
+                </div>
+                <div class="card-body text-center py-5">
+                    <h3 class="text-muted mb-4">
+                        INPC pour {% if month == 1 %}Janvier
+                        {% elif month == 2 %}Février
+                        {% elif month == 3 %}Mars
+                        {% elif month == 4 %}Avril
+                        {% elif month == 5 %}Mai
+                        {% elif month == 6 %}Juin
+                        {% elif month == 7 %}Juillet
+                        {% elif month == 8 %}Août
+                        {% elif month == 9 %}Septembre
+                        {% elif month == 10 %}Octobre
+                        {% elif month == 11 %}Novembre
+                        {% elif month == 12 %}Décembre{% endif %} {{ year }}
+                    </h3>
+                    <div class="display-1 fw-bold text-success mb-4">
+                        {{ inpc|floatformat:2 }}
+                    </div>
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="{% url 'calculate_inpc' %}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-calculator me-2"></i>Nouveau Calcul
+                        </a>
+                        <button type="button" class="btn btn-secondary btn-lg" onclick="window.print()">
+                            <i class="fas fa-print me-2"></i>Imprimer
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historical Comparison -->
+            <div class="card mt-4 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Comparaison Historique
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="inpcChart"></canvas>
+                </div>
+            </div>
         </div>
-        <a href="{% url 'calculate_inpc' %}" class="btn btn-primary">Nouveau Calcul</a>
     </div>
 </div>
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Sample historical data - replace with actual data
+    const ctx = document.getElementById('inpcChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun'],
+            datasets: [{
+                label: 'INPC ' + {{ year }},
+                data: [{{ inpc }}, {{ inpc }}-0.5, {{ inpc }}+0.3, {{ inpc }}-0.2, {{ inpc }}+0.4, {{ inpc }}],
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Évolution de l\'INPC'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
 {% endblock %}

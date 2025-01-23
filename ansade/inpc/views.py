@@ -13,7 +13,7 @@ from datetime import datetime
 import pandas as pd
 import io
 import xlsxwriter
-
+from django.db.models import Avg
 @login_required
 def home(request):
     if not request.user.is_authenticated:  # Vérifie si l'utilisateur n'est pas connecté
@@ -27,43 +27,86 @@ def home(request):
     }
     return render(request, 'inpc/home.html', context)
 
+
+def calculate_inpc_for_date(date):
+    """
+    Fonction utilitaire pour calculer l'INPC pour une date donnée.
+    """
+    # Calculer le prix moyen de chaque produit pour la période donnée
+    product_avg_prices = {}
+    for product in Product.objects.all():
+        # Récupérer les prix du produit dans tous les points de vente pour la période donnée
+        avg_price = ProductPrice.objects.filter(
+            product=product,
+            date_from__lte=date,
+            date_to__gte=date
+        ).aggregate(Avg('value'))['value__avg']
+
+        if avg_price is not None:
+            product_avg_prices[product.id] = avg_price
+
+    # Si aucun prix n'est trouvé, retourner 0
+    if not product_avg_prices:
+        return 0
+
+    # Calculer l'INPC pour chaque panier
+    cart_inpc = {}
+    for cart in Cart.objects.all():
+        total_weighted_price = 0
+        total_weight = 0
+
+        # Récupérer les produits du panier pour la période donnée
+        cart_products = CartProduct.objects.filter(
+            cart=cart,
+            date_from__lte=date,
+            date_to__gte=date
+        )
+
+        for cart_product in cart_products:
+            product_id = cart_product.product.id
+            if product_id in product_avg_prices:
+                total_weighted_price += product_avg_prices[product_id] * cart_product.weight
+                total_weight += cart_product.weight
+
+        # Calculer l'INPC du panier
+        if total_weight > 0:
+            cart_inpc[cart.id] = total_weighted_price / total_weight
+        else:
+            cart_inpc[cart.id] = 0
+
+    # Si aucun panier n'est trouvé, retourner 0
+    if not cart_inpc:
+        return 0
+
+    # Calculer l'INPC global
+    return sum(cart_inpc.values()) / len(cart_inpc)
 @login_required
 def calculate_inpc(request):
+    """
+    Vue Django pour calculer l'INPC en fonction des données soumises par l'utilisateur.
+    """
     if request.method == 'POST':
         try:
             month = int(request.POST.get('month'))
             year = int(request.POST.get('year'))
-            date = datetime(year, month, 1)
+            date = datetime(year, month, 1)  # Créer un objet datetime pour le début du mois
 
-            total_weighted_price = 0
-            total_weight = 0
+            # Calculer l'INPC global pour la période donnée
+            inpc = calculate_inpc_for_date(date)
 
-            for cart_product in CartProduct.objects.filter(date_from__lte=date, date_to__gte=date):
-                try:
-                    price = ProductPrice.objects.filter(
-                        product=cart_product.product,
-                        point_of_sale=cart_product.cart.point_of_sale,
-                        date_from__lte=date,
-                        date_to__gte=date
-                    ).latest('date_from')
-
-                    total_weighted_price += price.value * cart_product.weight
-                    total_weight += cart_product.weight
-                except ProductPrice.DoesNotExist:
-                    continue
-
-            inpc = total_weighted_price / total_weight if total_weight > 0 else 0
-
+            # Préparer le contexte pour le template
             context = {
                 'inpc': inpc,
                 'month': month,
                 'year': year,
             }
             return render(request, 'inpc/inpc_result.html', context)
+
         except Exception as e:
             messages.error(request, f"Erreur lors du calcul de l'INPC : {str(e)}")
             return redirect('calculate_inpc')
 
+    # Si la méthode n'est pas POST, afficher le formulaire
     current_year = datetime.now().year
     return render(request, 'inpc/inpc_form.html', {'current_year': current_year})
 
