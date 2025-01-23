@@ -87,7 +87,38 @@
         </div>
     </div>
 
-    
+    <!-- INPC des 4 derniers mois -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">INPC des 4 derniers mois</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Mois</th>
+                                    <th>Année</th>
+                                    <th>INPC</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for inpc in inpc_last_4_months %}
+                                <tr>
+                                    <td>{{ inpc.month }}</td>
+                                    <td>{{ inpc.year }}</td>
+                                    <td>{{ inpc.inpc|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Quick Actions -->
     <div class="row mt-4">

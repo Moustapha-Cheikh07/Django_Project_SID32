@@ -9,23 +9,44 @@ from django.apps import apps
 from .models import *
 from .forms import *
 from .filters import *
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import io
 import xlsxwriter
 from django.db.models import Avg
+from dateutil.relativedelta import relativedelta
 @login_required
 def home(request):
     if not request.user.is_authenticated:  # Vérifie si l'utilisateur n'est pas connecté
         return redirect('login')  # Redirige vers la page de connexion
-    
-    context = {
-        'total_products': Product.objects.count(),
-        'total_points_of_sale': PointOfSale.objects.count(),
-        'total_carts': Cart.objects.count(),
-        'recent_prices': ProductPrice.objects.order_by('-date_from')[:5],
+
+    # Calculer l'INPC pour les 4 derniers mois
+    inpc_4_derniers_mois = []
+    aujourdhui = datetime.today()
+
+    for i in range(4):
+        # Calculer la date pour chaque mois précédent en utilisant relativedelta
+        date = aujourdhui - relativedelta(months=i)
+        mois = date.month
+        annee = date.year
+
+        # Calculer l'INPC pour ce mois
+        valeur_inpc = calculate_inpc_for_date(datetime(annee, mois, 1))
+        inpc_4_derniers_mois.append({
+            'mois': mois,
+            'annee': annee,
+            'inpc': valeur_inpc
+        })
+
+    # Ajouter les données au contexte avec des noms en français
+    contexte = {
+        'total_produits': Product.objects.count(),
+        'total_points_de_vente': PointOfSale.objects.count(),
+        'total_paniers': Cart.objects.count(),
+        'prix_recents': ProductPrice.objects.order_by('-date_from')[:5],
+        'inpc_4_derniers_mois': inpc_4_derniers_mois,  # Ajout des données INPC des 4 derniers mois
     }
-    return render(request, 'inpc/home.html', context)
+    return render(request, 'inpc/home.html', contexte)
 
 
 def calculate_inpc_for_date(date):
@@ -91,12 +112,25 @@ def calculate_inpc(request):
             year = int(request.POST.get('year'))
             date = datetime(year, month, 1)  # Créer un objet datetime pour le début du mois
 
+            # Année de base (2019)
+            base_year = 2019
+            base_date = datetime(base_year, 1, 1)
+
+            # Calculer l'INPC global pour l'année de base (2019)
+            base_inpc = calculate_inpc_for_date(base_date)
+
             # Calculer l'INPC global pour la période donnée
-            inpc = calculate_inpc_for_date(date)
+            current_inpc = calculate_inpc_for_date(date)
+
+            # Normaliser l'INPC global par rapport à l'année de base
+            if base_inpc > 0:
+                inpc_global = (current_inpc / base_inpc) * 100  # Base 100 = 2019
+            else:
+                inpc_global = 0
 
             # Préparer le contexte pour le template
             context = {
-                'inpc': inpc,
+                'inpc': inpc_global,
                 'month': month,
                 'year': year,
             }
