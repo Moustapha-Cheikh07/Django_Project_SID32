@@ -1,4 +1,4 @@
-version: '3.8'
+
 
 services:
   web:
@@ -38,7 +38,7 @@ services:
       - MYSQL_ROOT_PASSWORD=RootMedmouna
       - TZ=UTC
     ports:
-      - "25007:3306"
+      - "24007:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 30s
