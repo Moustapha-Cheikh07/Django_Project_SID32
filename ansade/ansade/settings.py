@@ -95,3 +95,6 @@ LOGOUT_REDIRECT_URL = '/'
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
+CSRF_TRUSTED_ORIGINS = [
+    'http://138.201.52.29:25007',
+]
