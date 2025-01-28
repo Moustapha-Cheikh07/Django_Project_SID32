@@ -221,30 +221,37 @@ def import_data(request, model):
     return redirect('import_export_data')
 
 def export_data(request, model):
+    # Récupérer les objets du modèle
     queryset = model.objects.all()
     
+    # Préparer les données à exporter
     data = []
     for obj in queryset:
         item = {}
         for field in obj._meta.fields:
             if field.is_relation:
-                item[field.name] = getattr(obj, field.name).code
+                # Gérer les relations pour inclure le code ou une autre valeur représentative
+                related_obj = getattr(obj, field.name, None)
+                item[field.name] = related_obj.code if related_obj else None
             else:
                 item[field.name] = getattr(obj, field.name)
         data.append(item)
     
+    # Créer un DataFrame pandas
     df = pd.DataFrame(data)
     
+    # Écrire les données dans un fichier Excel en mémoire
     output = io.BytesIO()
-    writer = pd.ExcelWriter(output, engine='xlsxwriter')
-    df.to_excel(writer, index=False, sheet_name='Sheet1')
-    writer.save()
-    output.seek(0)
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Sheet1')
     
+    # Préparer la réponse HTTP avec le fichier Excel
+    output.seek(0)  # Réinitialiser le pointeur du buffer
     response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename={model.__name__}_export.xlsx'
     
     return response
+
 
 @login_required
 def download_template(request, model_name):
