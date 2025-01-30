@@ -4,3 +4,4 @@ openpyxl
 django-filter
 pandas
 xlsxwriter
+django-chartjs

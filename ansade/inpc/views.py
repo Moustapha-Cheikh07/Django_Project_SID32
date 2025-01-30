@@ -32,17 +32,36 @@ def home(request):
         # Calculer l'INPC pour ce mois
         valeur_inpc = calculate_inpc_for_date(datetime(annee, mois, 1))
         inpc_last_4_months.append({
-            'month': mois,  # Assurez-vous que les clés correspondent à celles utilisées dans le template
+            'month': mois,
             'year': annee,
             'inpc': valeur_inpc
         })
+
+    # Récupérer les données pour l'évolution des prix
+    products = Product.objects.all()
+    selected_product = request.GET.get('product')
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    price_data = []
+    if selected_product and start_date and end_date:
+        price_data = ProductPrice.objects.filter(
+            product_id=selected_product,
+            date_from__gte=start_date,
+            date_from__lte=end_date
+        ).values('date_from').annotate(avg_price=Avg('value')).order_by('date_from')
 
     # Ajouter les données au contexte
     context = {
         'total_products': Product.objects.count(),
         'total_points_of_sale': PointOfSale.objects.count(),
         'total_carts': Cart.objects.count(),
-        'inpc_last_4_months': inpc_last_4_months,  # Assurez-vous que la clé correspond à celle utilisée dans le template
+        'inpc_last_4_months': inpc_last_4_months,
+        'products': products,
+        'selected_product': selected_product,
+        'start_date': start_date,
+        'end_date': end_date,
+        'price_data': list(price_data),
     }
     return render(request, 'inpc/home.html', context)
 
@@ -221,37 +240,37 @@ def import_data(request, model):
     return redirect('import_export_data')
 
 def export_data(request, model):
-    # Récupérer les objets du modèle
     queryset = model.objects.all()
     
-    # Préparer les données à exporter
+    # Préparer les données pour l'exportation
     data = []
     for obj in queryset:
         item = {}
         for field in obj._meta.fields:
             if field.is_relation:
-                # Gérer les relations pour inclure le code ou une autre valeur représentative
-                related_obj = getattr(obj, field.name, None)
-                item[field.name] = related_obj.code if related_obj else None
+                item[field.name] = getattr(obj, field.name).code  # Utiliser le code de la clé étrangère
             else:
                 item[field.name] = getattr(obj, field.name)
         data.append(item)
     
-    # Créer un DataFrame pandas
+    # Créer un DataFrame à partir des données
     df = pd.DataFrame(data)
     
-    # Écrire les données dans un fichier Excel en mémoire
+    # Créer un buffer en mémoire pour le fichier Excel
     output = io.BytesIO()
+    
+    # Utiliser pandas.ExcelWriter pour écrire le DataFrame dans le buffer
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name='Sheet1')
     
-    # Préparer la réponse HTTP avec le fichier Excel
-    output.seek(0)  # Réinitialiser le pointeur du buffer
-    response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    # Replacer le pointeur au début du buffer
+    output.seek(0)
+    
+    # Créer l'objet HttpResponse avec le fichier Excel
+    response = HttpResponse(output, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename={model.__name__}_export.xlsx'
     
     return response
-
 
 @login_required
 def download_template(request, model_name):
@@ -741,3 +760,187 @@ class ProductPriceDeleteView(LoginRequiredMixin, DeleteView):
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, "Prix du produit supprimé avec succès.")
         return super().delete(request, *args, **kwargs)
+    
+from django.shortcuts import render
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from .models import Product, ProductPrice
+from django.db.models import Avg
+from datetime import datetime
+
+# ... vos autres vues existantes ...
+
+@login_required
+def price_evolution(request):
+    """Vue pour afficher la page d'évolution des prix"""
+    products = Product.objects.all().order_by('name')
+    context = {
+        'products': products,
+        'selected_product': request.GET.get('product'),
+        'start_date': request.GET.get('start_date'),
+        'end_date': request.GET.get('end_date'),
+    }
+    return render(request, 'inpc/price_evolution.html', context)
+
+@login_required
+def price_evolution_data(request):
+    """Vue API pour récupérer les données du graphique"""
+    try:
+        product_id = request.GET.get('product')
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+
+        if not all([product_id, start_date, end_date]):
+            return JsonResponse({'error': 'Paramètres manquants'}, status=400)
+
+        # Récupérer les prix pour le produit et la période donnée
+        prices = ProductPrice.objects.filter(
+            product_id=product_id,
+            date_from__gte=start_date,
+            date_from__lte=end_date
+        ).values('date_from').annotate(
+            avg_price=Avg('value')
+        ).order_by('date_from')
+
+        # Formater les données pour le graphique
+        data = {
+            'labels': [price['date_from'].strftime('%Y-%m-%d') for price in prices],
+            'values': [float(price['avg_price']) for price in prices]
+        }
+
+        return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.db.models import Avg
+from chartjs.views.lines import BaseLineChartView
+from chartjs.views.pie import HighChartPieView
+from chartjs.views.columns import BaseColumnsHighChartsView
+from .models import Product, Cart, ProductPrice, CartProduct, ProductType
+from datetime import datetime, timedelta
+
+@login_required
+def dashboard(request):
+    products = Product.objects.all()
+    carts = Cart.objects.all()
+    
+    context = {
+        'products': products,
+        'carts': carts,
+    }
+    return render(request, 'inpc/dashboard.html', context)
+
+class ProductINPCLineChart(BaseLineChartView):
+    def get_labels(self):
+        dates = []
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=30)
+        date = start_date
+        while date <= end_date:
+            dates.append(date.strftime('%Y-%m-%d'))
+            date += timedelta(days=1)
+        return dates
+
+    def get_providers(self):
+        return ["INPC"]
+
+    def get_data(self):
+        product_id = self.request.GET.get('product')
+        if not product_id:
+            return [[0 for _ in self.get_labels()]]
+        
+        product = Product.objects.get(id=product_id)
+        dates = self.get_labels()
+        inpc_values = []
+        
+        for date_str in dates:
+            date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            avg_price = ProductPrice.objects.filter(
+                product=product,
+                date_from__lte=date,
+                date_to__gte=date
+            ).aggregate(Avg('value'))['value__avg']
+            
+            if avg_price is None:
+                inpc_values.append(None)
+            else:
+                inpc_values.append(float(avg_price))
+        
+        return [inpc_values]
+
+class CartINPCPieChart(HighChartPieView):
+    def get_labels(self):
+        return [cart.name for cart in Cart.objects.all()]
+
+    def get_data(self):
+        data = []
+        for cart in Cart.objects.all():
+            total_value = 0
+            cart_products = CartProduct.objects.filter(cart=cart)
+            for cart_product in cart_products:
+                latest_price = ProductPrice.objects.filter(
+                    product=cart_product.product
+                ).order_by('-date_from').first()
+                if latest_price:
+                    total_value += latest_price.value * cart_product.weight
+            data.append(total_value)
+        return data
+
+class ProductTypeBarChart(BaseColumnsHighChartsView):
+    def get_labels(self):
+        return [pt.name for pt in ProductType.objects.all()]
+
+    def get_data(self):
+        data = []
+        for product_type in ProductType.objects.all():
+            count = Product.objects.filter(product_type=product_type).count()
+            data.append(count)
+        return [data]
+
+class GlobalINPCLineChart(BaseLineChartView):
+    def get_labels(self):
+        start_date = self.request.GET.get('start_date')
+        end_date = self.request.GET.get('end_date')
+        if not start_date or not end_date:
+            end_date = datetime.now().date()
+            start_date = end_date - timedelta(days=30)
+        else:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        
+        dates = []
+        date = start_date
+        while date <= end_date:
+            dates.append(date.strftime('%Y-%m-%d'))
+            date += timedelta(days=1)
+        return dates
+
+    def get_providers(self):
+        return ["INPC Global"]
+
+    def get_data(self):
+        dates = self.get_labels()
+        inpc_values = []
+        
+        for date_str in dates:
+            date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            avg_price = ProductPrice.objects.filter(
+                date_from__lte=date,
+                date_to__gte=date
+            ).aggregate(Avg('value'))['value__avg']
+            
+            if avg_price is None:
+                inpc_values.append(None)
+            else:
+                inpc_values.append(float(avg_price))
+        
+        return [inpc_values]
+
+product_inpc_line_chart = ProductINPCLineChart.as_view()
+cart_inpc_pie_chart = CartINPCPieChart.as_view()
+product_type_bar_chart = ProductTypeBarChart.as_view()
+global_inpc_line_chart = GlobalINPCLineChart.as_view()
+
+

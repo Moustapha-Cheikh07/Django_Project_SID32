@@ -1,0 +1,133 @@
+{% extends 'inpc/base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="fas fa-chart-line me-2"></i>
+                Évolution des Prix
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" id="priceEvolutionForm" class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label for="product" class="form-label">Produit</label>
+                    <select name="product" id="product" class="form-select" required>
+                        <option value="">Sélectionner un produit</option>
+                        {% for product in products %}
+                            <option value="{{ product.id }}" {% if selected_product == product.id %}selected{% endif %}>
+                                {{ product.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="start_date" class="form-label">Date de début</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date" 
+                           value="{{ start_date|default:'' }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="end_date" class="form-label">Date de fin</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date" 
+                           value="{{ end_date|default:'' }}" required>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i>Afficher
+                    </button>
+                </div>
+            </form>
+            
+            <div class="chart-container" style="position: relative; height:400px;">
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    let chart = null;
+
+    async function fetchData() {
+        const form = document.getElementById('priceEvolutionForm');
+        const formData = new FormData(form);
+        const params = new URLSearchParams(formData);
+
+        try {
+            const response = await fetch(`{% url 'price_evolution_data' %}?${params.toString()}`);
+            if (!response.ok) {
+                throw new Error('Erreur réseau');
+            }
+            const data = await response.json();
+            
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Prix',
+                        data: data.values,
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Évolution des Prix'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Prix'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la récupération des données');
+        }
+    }
+
+    // Si le formulaire a des valeurs, charger les données
+    const product = document.getElementById('product').value;
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+    
+    if (product && startDate && endDate) {
+        fetchData();
+    }
+
+    // Écouter la soumission du formulaire
+    document.getElementById('priceEvolutionForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetchData();
+    });
+});
+</script>
+{% endblock %}

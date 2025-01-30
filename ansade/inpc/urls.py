@@ -76,4 +76,18 @@ urlpatterns = [
     path('product-prices/create/', views.ProductPriceCreateView.as_view(), name='product_price_create'),
     path('product-prices/<int:pk>/update/', views.ProductPriceUpdateView.as_view(), name='product_price_update'),
     path('product-prices/<int:pk>/delete/', views.ProductPriceDeleteView.as_view(), name='product_price_delete'),
+
+    # URLs pour l'évolution des prix
+    path('price-evolution/', views.price_evolution, name='price_evolution'),
+    path('price-evolution/data/', views.price_evolution_data, name='price_evolution_data'),
+
+    # ... other URLs ...
+
+    path('dashboard/', views.dashboard, name='dashboard'),
+    path('dashboard/product-inpc-chart/', views.product_inpc_line_chart, name='product_inpc_chart'),
+    path('dashboard/cart-inpc-chart/', views.cart_inpc_pie_chart, name='cart_inpc_chart'),
+    path('dashboard/product-type-chart/', views.product_type_bar_chart, name='product_type_chart'),
+    path('dashboard/global-inpc-chart/', views.global_inpc_line_chart, name='global_inpc_chart'),
+
+
 ]

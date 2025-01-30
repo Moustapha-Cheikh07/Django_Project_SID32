@@ -87,6 +87,69 @@
         </div>
     </div>
 
+    <!-- Dashboard Link -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard INPC
+                    </h5>
+                    <p class="card-text">Accédez au tableau de bord interactif pour visualiser les statistiques détaillées et l'évolution de l'INPC.</p>
+                    <a href="{% url 'dashboard' %}" class="btn btn-primary">
+                        <i class="fas fa-chart-bar me-2"></i>Voir le Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Price Evolution Chart -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>
+                        Évolution des Prix
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="priceEvolutionForm" class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label for="product" class="form-label">Produit</label>
+                            <select name="product" id="product" class="form-select" required>
+                                <option value="">Sélectionner un produit</option>
+                                {% for product in products %}
+                                    <option value="{{ product.id }}">{{ product.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="start_date" class="form-label">Date de début</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="end_date" class="form-label">Date de fin</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date" required>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-2"></i>Afficher
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div id="errorMessage" class="alert alert-danger mt-3" style="display: none;"></div>
+                    
+                    <div class="chart-container" style="position: relative; height:400px;">
+                        <canvas id="priceEvolutionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- INPC des 4 derniers mois -->
     <div class="row mt-4">
         <div class="col-12">
@@ -162,7 +225,94 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let chart = null;
+    const ctx = document.getElementById('priceEvolutionChart').getContext('2d');
+    const errorMessageDiv = document.getElementById('errorMessage');
+    
+    document.getElementById('priceEvolutionForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const queryString = new URLSearchParams(formData).toString();
+        
+        try {
+            const response = await fetch(`{% url 'price_evolution_data' %}?${queryString}`);
+            if (!response.ok) {
+                throw new Error('Erreur réseau');
+            }
+            const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            if (chart) {
+                chart.destroy();
+            }
+            
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Prix',
+                        data: data.values,
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Évolution des Prix'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Prix'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        }
+                    }
+                }
+            });
+            errorMessageDiv.style.display = 'none';
+        } catch (error) {
+            console.error('Erreur lors de la récupération des données:', error);
+            errorMessageDiv.textContent = 'Erreur lors de la récupération des données: ' + error.message;
+            errorMessageDiv.style.display = 'block';
+            if (chart) {
+                chart.destroy();
+                chart = null;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
 <style>
 .icon-circle {
     height: 64px;
@@ -180,5 +330,12 @@
 .card:hover {
     transform: translateY(-5px);
 }
+
+.chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+}
 </style>
 {% endblock %}
+

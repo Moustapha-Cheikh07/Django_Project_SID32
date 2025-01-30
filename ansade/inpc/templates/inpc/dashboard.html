@@ -1,0 +1,292 @@
+{% extends "inpc/base.html" %}
+
+{% block title %}Dashboard - INPC{% endblock %}
+
+{% block extra_css %}
+<style>
+  .chart-container {
+      position: relative;
+      height: 400px;
+      width: 100%;
+      margin-bottom: 30px;
+  }
+  .card {
+      transition: all 0.3s ease;
+  }
+  .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h1 class="mb-4">Dashboard INPC</h1>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Évolution de l'INPC par Produit</h5>
+                </div>
+                <div class="card-body">
+                    <select id="productSelect" class="form-select mb-3">
+                        <option value="">Sélectionnez un produit</option>
+                        {% for product in products %}
+                            <option value="{{ product.id }}">{{ product.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="chart-container">
+                        <canvas id="productINPCChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">INPC par Panier</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="cartINPCChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Nombre de Produits par Type</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="productTypeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Évolution de l'INPC Global</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label for="startDate" class="form-label">Date de début</label>
+                            <input type="date" id="startDate" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="endDate" class="form-label">Date de fin</label>
+                            <input type="date" id="endDate" class="form-control">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button id="updateGlobalINPC" class="btn btn-primary">Mettre à jour</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="globalINPCChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let productINPCChart, cartINPCChart, productTypeChart, globalINPCChart;
+
+    function initProductINPCChart() {
+        const ctx = document.getElementById('productINPCChart').getContext('2d');
+        productINPCChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'INPC',
+                    data: [],
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+    }
+
+    function updateProductINPCChart(productId) {
+        fetch(`/dashboard/product-inpc-chart/?product=${productId}`)
+            .then(response => response.json())
+            .then(data => {
+                productINPCChart.data.labels = data.labels;
+                productINPCChart.data.datasets[0].data = data.datasets[0].data;
+                productINPCChart.update();
+            });
+    }
+
+    function initCartINPCChart() {
+        const ctx = document.getElementById('cartINPCChart').getContext('2d');
+        cartINPCChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    backgroundColor: [
+                        'rgb(255, 99, 132)',
+                        'rgb(54, 162, 235)',
+                        'rgb(255, 205, 86)',
+                        'rgb(75, 192, 192)',
+                        'rgb(153, 102, 255)',
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+            }
+        });
+    }
+
+    function updateCartINPCChart() {
+        fetch('/dashboard/cart-inpc-chart/')
+            .then(response => response.json())
+            .then(data => {
+                cartINPCChart.data.labels = data.labels;
+                cartINPCChart.data.datasets[0].data = data.datasets[0].data;
+                cartINPCChart.update();
+            });
+    }
+
+    function initProductTypeChart() {
+        const ctx = document.getElementById('productTypeChart').getContext('2d');
+        productTypeChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Nombre de Produits',
+                    data: [],
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                    borderColor: 'rgb(75, 192, 192)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0  // Show whole numbers only
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    }
+
+    function updateProductTypeChart() {
+        fetch('/dashboard/product-type-chart/')
+            .then(response => response.json())
+            .then(data => {
+                productTypeChart.data.labels = data.labels;
+                productTypeChart.data.datasets[0].data = data.datasets[0].data;
+                productTypeChart.update();
+            });
+    }
+
+    function initGlobalINPCChart() {
+        const ctx = document.getElementById('globalINPCChart').getContext('2d');
+        globalINPCChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'INPC Global',
+                    data: [],
+                    borderColor: 'rgb(255, 99, 132)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+    }
+
+    function updateGlobalINPCChart() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        fetch(`/dashboard/global-inpc-chart/?start_date=${startDate}&end_date=${endDate}`)
+            .then(response => response.json())
+            .then(data => {
+                globalINPCChart.data.labels = data.labels;
+                globalINPCChart.data.datasets[0].data = data.datasets[0].data;
+                globalINPCChart.update();
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initProductINPCChart();
+        initCartINPCChart();
+        initProductTypeChart();
+        initGlobalINPCChart();
+
+        updateCartINPCChart();
+        updateProductTypeChart();
+
+        const productSelect = document.getElementById('productSelect');
+        productSelect.addEventListener('change', function() {
+            if (this.value) {
+                updateProductINPCChart(this.value);
+            }
+        });
+
+        const updateGlobalINPCButton = document.getElementById('updateGlobalINPC');
+        updateGlobalINPCButton.addEventListener('click', updateGlobalINPCChart);
+
+        // Set default dates for global INPC chart
+        const today = new Date();
+        const oneMonthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+        document.getElementById('startDate').value = oneMonthAgo.toISOString().split('T')[0];
+        document.getElementById('endDate').value = today.toISOString().split('T')[0];
+
+        // Initial update of global INPC chart
+        updateGlobalINPCChart();
+    });
+</script>
+{% endblock %}
+
