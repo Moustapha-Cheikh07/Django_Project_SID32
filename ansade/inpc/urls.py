@@ -1,6 +1,13 @@
 from django.urls import path
 from . import views
 from django.contrib.auth import views as auth_views
+from .views import dashboard
+from .views import (
+    dashboard,
+    product_inpc_line_chart,
+    global_inpc_line_chart
+)
+
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -83,11 +90,10 @@ urlpatterns = [
 
     # ... other URLs ...
 
-    path('dashboard/', views.dashboard, name='dashboard'),
-    path('dashboard/product-inpc-chart/', views.product_inpc_line_chart, name='product_inpc_chart'),
-    path('dashboard/cart-inpc-chart/', views.cart_inpc_pie_chart, name='cart_inpc_chart'),
-    path('dashboard/product-type-chart/', views.product_type_bar_chart, name='product_type_chart'),
-    path('dashboard/global-inpc-chart/', views.global_inpc_line_chart, name='global_inpc_chart'),
+    path('dashboard/', dashboard, name='dashboard'),
+    path('dashboard/product-inpc-chart/', product_inpc_line_chart, name='product_inpc_line_chart'),
+    path('dashboard/global-inpc-chart/', global_inpc_line_chart, name='global_inpc_line_chart'),
+
 
 
 ]

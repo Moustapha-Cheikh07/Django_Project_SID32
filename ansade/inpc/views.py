@@ -813,24 +813,47 @@ def price_evolution_data(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 from django.shortcuts import render
+from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg
 from chartjs.views.lines import BaseLineChartView
-from chartjs.views.pie import HighChartPieView
 from chartjs.views.columns import BaseColumnsHighChartsView
-from .models import Product, Cart, ProductPrice, CartProduct, ProductType
-from datetime import datetime, timedelta
+from .models import Product, ProductPrice, PointOfSale, ProductType
 
 @login_required
 def dashboard(request):
     products = Product.objects.all()
-    carts = Cart.objects.all()
-    
     context = {
         'products': products,
-        'carts': carts,
     }
     return render(request, 'inpc/dashboard.html', context)
+
+
+class ProductTypePieChart(BaseLineChartView):
+    def get_labels(self):
+        # Retourner les labels des types de produits
+        return [pt.label for pt in ProductType.objects.all()]
+
+    def get_data(self):
+        # Calculer le nombre de produits pour chaque type
+        data = []
+        for product_type in ProductType.objects.all():
+            count = Product.objects.filter(product_type=product_type).count()
+            data.append(count)
+        return [data]
+
+
+class AvgProductPriceByPOSChart(BaseColumnsHighChartsView):
+    def get_labels(self):
+        return [pos.name for pos in PointOfSale.objects.all()]
+
+    def get_data(self):
+        data = []
+        for pos in PointOfSale.objects.all():
+            avg_price = ProductPrice.objects.filter(point_of_sale=pos).aggregate(Avg('value'))['value__avg']
+            data.append(avg_price if avg_price is not None else 0)
+        return [data]
+
 
 class ProductINPCLineChart(BaseLineChartView):
     def get_labels(self):
@@ -850,11 +873,11 @@ class ProductINPCLineChart(BaseLineChartView):
         product_id = self.request.GET.get('product')
         if not product_id:
             return [[0 for _ in self.get_labels()]]
-        
+
         product = Product.objects.get(id=product_id)
         dates = self.get_labels()
         inpc_values = []
-        
+
         for date_str in dates:
             date = datetime.strptime(date_str, '%Y-%m-%d').date()
             avg_price = ProductPrice.objects.filter(
@@ -862,42 +885,14 @@ class ProductINPCLineChart(BaseLineChartView):
                 date_from__lte=date,
                 date_to__gte=date
             ).aggregate(Avg('value'))['value__avg']
-            
+
             if avg_price is None:
                 inpc_values.append(None)
             else:
                 inpc_values.append(float(avg_price))
-        
+
         return [inpc_values]
 
-class CartINPCPieChart(HighChartPieView):
-    def get_labels(self):
-        return [cart.name for cart in Cart.objects.all()]
-
-    def get_data(self):
-        data = []
-        for cart in Cart.objects.all():
-            total_value = 0
-            cart_products = CartProduct.objects.filter(cart=cart)
-            for cart_product in cart_products:
-                latest_price = ProductPrice.objects.filter(
-                    product=cart_product.product
-                ).order_by('-date_from').first()
-                if latest_price:
-                    total_value += latest_price.value * cart_product.weight
-            data.append(total_value)
-        return data
-
-class ProductTypeBarChart(BaseColumnsHighChartsView):
-    def get_labels(self):
-        return [pt.name for pt in ProductType.objects.all()]
-
-    def get_data(self):
-        data = []
-        for product_type in ProductType.objects.all():
-            count = Product.objects.filter(product_type=product_type).count()
-            data.append(count)
-        return [data]
 
 class GlobalINPCLineChart(BaseLineChartView):
     def get_labels(self):
@@ -909,7 +904,7 @@ class GlobalINPCLineChart(BaseLineChartView):
         else:
             start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-        
+
         dates = []
         date = start_date
         while date <= end_date:
@@ -923,24 +918,28 @@ class GlobalINPCLineChart(BaseLineChartView):
     def get_data(self):
         dates = self.get_labels()
         inpc_values = []
-        
+
         for date_str in dates:
             date = datetime.strptime(date_str, '%Y-%m-%d').date()
             avg_price = ProductPrice.objects.filter(
                 date_from__lte=date,
                 date_to__gte=date
             ).aggregate(Avg('value'))['value__avg']
-            
+
             if avg_price is None:
                 inpc_values.append(None)
             else:
                 inpc_values.append(float(avg_price))
-        
+
         return [inpc_values]
 
+
+# ✅ Ensure these are properly defined
+
+avg_product_price_by_pos_chart = AvgProductPriceByPOSChart.as_view()
 product_inpc_line_chart = ProductINPCLineChart.as_view()
-cart_inpc_pie_chart = CartINPCPieChart.as_view()
-product_type_bar_chart = ProductTypeBarChart.as_view()
 global_inpc_line_chart = GlobalINPCLineChart.as_view()
+
+
 
 

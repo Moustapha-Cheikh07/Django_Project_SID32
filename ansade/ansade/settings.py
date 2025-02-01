@@ -99,5 +99,6 @@ AUTHENTICATION_BACKENDS = [
 CSRF_TRUSTED_ORIGINS = [
     'http://138.201.52.29:25007',
     'https://138.201.52.29:25007',
-    'http://teaching.sidi.xyz:25007'
+    'http://teaching.sidi.xyz:25007',
+    'https://teaching.sidi.xyz:25007',
 ]
