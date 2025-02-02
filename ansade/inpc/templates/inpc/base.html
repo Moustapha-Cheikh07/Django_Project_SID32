@@ -17,36 +17,27 @@
     <!-- Custom CSS -->
     <style>
         :root {
-            --primary-color: #2c3e50;
-            --secondary-color: #34495e;
-            --accent-color: #3498db;
+            --primary-color: #0d6efd;
+            --secondary-color: #6c757d;
         }
 
         body {
-            min-height: 100vh;
-            padding-top: 60px;
             background-color: #f8f9fa;
         }
 
-        .sidebar {
-            position: fixed;
-            top: 60px;
-            bottom: 0;
-            left: 0;
-            z-index: 100;
-            padding: 48px 0 0;
-            box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
-            background-color: var(--primary-color);
-            transition: all 0.3s;
+        .welcome-banner {
+            background: linear-gradient(135deg, rgba(13, 110, 253, 0.05) 0%, rgba(13, 110, 253, 0.1) 100%);
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        .sidebar-sticky {
-            position: relative;
-            top: 0;
-            height: calc(100vh - 48px);
-            padding-top: .5rem;
-            overflow-x: hidden;
-            overflow-y: auto;
+        .welcome-banner h1 {
+            color: var(--primary-color);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .welcome-banner .lead {
+            color: var(--secondary-color);
         }
 
         .navbar {
@@ -75,8 +66,8 @@
         }
 
         .btn-primary {
-            background-color: var(--accent-color);
-            border-color: var(--accent-color);
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
         }
 
         .table {
@@ -139,11 +130,7 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarCollapse">
                 <ul class="navbar-nav me-auto mb-2 mb-md-0">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'dashboard' %}">
-                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
-                        </a>
-                    </li>
+                    
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="prixDropdown" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-tag me-2"></i>Prix
@@ -196,8 +183,30 @@
                                     <i class="fas fa-building me-2"></i>Structures administratives
                                 </a>
                             </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'filter_data' %}">
+                                    <i class="fas fa-filter me-2"></i>Filtrage
+                                </a>
+                            </li>
                         </ul>
                     </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="importExportDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-file-import me-2"></i>Import/Export
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><h6 class="dropdown-header">Import</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'import_export_data' %}?action=import&model=product">Importer Produits</a></li>
+                            <li><a class="dropdown-item" href="{% url 'import_export_data' %}?action=import&model=product_price">Importer Prix</a></li>
+                            <li><a class="dropdown-item" href="{% url 'import_export_data' %}?action=import&model=point_of_sale">Importer Points de Vente</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Export</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'import_export_data' %}?action=export&model=product">Exporter Produits</a></li>
+                            <li><a class="dropdown-item" href="{% url 'import_export_data' %}?action=export&model=product_price">Exporter Prix</a></li>
+                            <li><a class="dropdown-item" href="{% url 'import_export_data' %}?action=export&model=point_of_sale">Exporter Points de Vente</a></li>
+                        </ul>
+                    </li>
+                    
                 </ul>
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
@@ -225,75 +234,16 @@
         </div>
     </nav>
 
-    <!-- Sidebar -->
-    <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block sidebar collapse">
-        <div class="position-sticky pt-3">
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'dashboard' %}">
-                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'product_price_list' %}">
-                        <i class="fas fa-tag me-2"></i>Prix
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'price_evolution' %}">
-                        <i class="fas fa-chart-line me-2"></i>Évolution des prix
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'cart_list' %}">
-                        <i class="fas fa-shopping-cart me-2"></i>Panier
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'point_of_sale_list' %}">
-                        <i class="fas fa-store me-2"></i>Points de vente
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'product_list' %}">
-                        <i class="fas fa-box me-2"></i>Produits
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'product_type_list' %}">
-                        <i class="fas fa-cogs me-2"></i>Type de produits
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'administrative_structures' %}">
-                        <i class="fas fa-building me-2"></i>Structures administratives
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'filter_data' %}">
-                        <i class="fas fa-filter me-2"></i>Filtrage
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'import_export_data' %}">
-                        <i class="fas fa-exchange-alt me-2"></i>Import/Export
-                    </a>
-                </li>
-            </ul>
-        </div>
-    </nav>
-
     <!-- Main Content -->
-    <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <main class="container-fluid py-4">
         {% if messages %}
             {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show mt-3" role="alert">
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
                     {{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             {% endfor %}
         {% endif %}
-        
         {% block content %}{% endblock %}
     </main>
 
@@ -336,4 +286,3 @@
     {% block extra_js %}{% endblock %}
 </body>
 </html>
-

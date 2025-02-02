@@ -13,55 +13,165 @@ from datetime import datetime, timedelta
 import pandas as pd
 import io
 import xlsxwriter
-from django.db.models import Avg
+from django.db.models import Avg, Max
 from dateutil.relativedelta import relativedelta
+import logging
+
+# Set up logging
+logger = logging.getLogger(__name__)
+
 @login_required
 def home(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
+    # Statistiques de base
+    total_products = Product.objects.count()
+    total_points_of_sale = PointOfSale.objects.count()
+    total_carts = Cart.objects.count()
 
     # Calculer l'INPC pour les 4 derniers mois
     inpc_last_4_months = []
     aujourdhui = datetime.today()
-
+    
     for i in range(4):
         date = aujourdhui - relativedelta(months=i)
         mois = date.month
         annee = date.year
-
+        
         # Calculer l'INPC pour ce mois
         valeur_inpc = calculate_inpc_for_date(datetime(annee, mois, 1))
         inpc_last_4_months.append({
-            'month': mois,
-            'year': annee,
-            'inpc': valeur_inpc
+            'month': date.strftime('%B %Y'),
+            'inpc': round(valeur_inpc, 2)
         })
 
-    # Récupérer les données pour l'évolution des prix
+    # Prix moyens par point de vente pour chaque produit
     products = Product.objects.all()
-    selected_product = request.GET.get('product')
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
+    points_of_sale = PointOfSale.objects.all()
+    
+    # Récupérer le product_id de l'URL ou utiliser le premier produit par défaut
+    default_product = products.first()
+    selected_product_id = request.GET.get('product_id')
+    
+    # Si aucun produit n'est sélectionné et qu'il y a des produits, utiliser le premier
+    if not selected_product_id and default_product:
+        selected_product_id = str(default_product.id)
+    
+    print(f"Selected product ID: {selected_product_id}")  # Debug log
+    
+    # Initialiser les listes pour les données du graphique
+    avg_prices_labels = []
+    avg_prices_data = []
+    
+    if selected_product_id:
+        # Calculer la moyenne des prix pour chaque point de vente
+        from django.db.models import F
+        from django.db.models.functions import ExtractMonth, ExtractYear
+        
+        # Obtenir la date actuelle
+        current_date = datetime.now().date()
+        print(f"Current date: {current_date}")  # Debug log
+        
+        # Récupérer tous les prix pour le produit sélectionné
+        all_prices = ProductPrice.objects.filter(
+            product_id=selected_product_id
+        )
+        print(f"Total prices found: {all_prices.count()}")  # Debug log
+        
+        # Filtrer les prix valides à la date actuelle
+        avg_prices = all_prices.filter(
+            date_from__lte=current_date,
+            date_to__gte=current_date
+        ).values(
+            'point_of_sale',
+            'point_of_sale__name'
+        ).annotate(
+            avg_price=Avg('value')
+        ).order_by('point_of_sale__name')
+        
+        print(f"Prices after date filter: {avg_prices.count()}")  # Debug log
+        print("Query:", avg_prices.query)  # Debug log
+        
+        # Si aucun prix n'est trouvé avec le filtre de date, prendre les prix les plus récents
+        if not avg_prices.exists():
+            print("No prices found with date filter, getting latest prices")  # Debug log
+            latest_prices = all_prices.values(
+                'point_of_sale'
+            ).annotate(
+                latest_date_from=Max('date_from')
+            )
+            
+            avg_prices = all_prices.filter(
+                date_from__in=[p['latest_date_from'] for p in latest_prices]
+            ).values(
+                'point_of_sale',
+                'point_of_sale__name'
+            ).annotate(
+                avg_price=Avg('value')
+            ).order_by('point_of_sale__name')
+        
+        # Créer un dictionnaire des prix moyens par point de vente
+        price_dict = {
+            price['point_of_sale']: price['avg_price']
+            for price in avg_prices
+        }
+        
+        print(f"Final price dictionary: {price_dict}")  # Debug log
+        
+        # Ajouter les données pour chaque point de vente
+        for pos in points_of_sale:
+            avg_prices_labels.append(pos.name)
+            if pos.id in price_dict:
+                avg_prices_data.append(float(price_dict[pos.id]))
+            else:
+                avg_prices_data.append(0)
+        
+        print(f"Final labels: {avg_prices_labels}")  # Debug log
+        print(f"Final data: {avg_prices_data}")  # Debug log
 
-    price_data = []
-    if selected_product and start_date and end_date:
-        price_data = ProductPrice.objects.filter(
-            product_id=selected_product,
-            date_from__gte=start_date,
-            date_from__lte=end_date
-        ).values('date_from').annotate(avg_price=Avg('value')).order_by('date_from')
+    # Convertir selected_product_id en entier pour la comparaison dans le template
+    selected_product_id = int(selected_product_id) if selected_product_id else None
 
-    # Ajouter les données au contexte
+    # Données pour les autres graphiques
+    product_types = ProductType.objects.all()
+    
+    # Données pour le diagramme circulaire des types de produits
+    product_type_labels = [pt.label for pt in product_types]
+    product_type_data = [Product.objects.filter(product_type=pt).count() for pt in product_types]
+    
+    # Données pour l'évolution de l'INPC par produit
+    inpc_by_product_data = []
+    inpc_by_product_labels = []
+    for product in products[:10]:  # Limiter aux 10 premiers produits pour la lisibilité
+        prices = ProductPrice.objects.filter(product=product).order_by('date_from')
+        if prices.exists():
+            inpc_by_product_data.append([price.value for price in prices])
+            inpc_by_product_labels.append(product.name)  # Utilisation de name au lieu de label
+    
+    # Données pour l'évolution de l'INPC Global
+    global_inpc_data = []
+    global_inpc_labels = []
+    prices = ProductPrice.objects.order_by('date_from').values('date_from').distinct()
+    for price_date in prices:
+        date = price_date['date_from']
+        avg_price = ProductPrice.objects.filter(date_from=date).aggregate(Avg('value'))['value__avg']
+        if avg_price:
+            global_inpc_data.append(float(avg_price))
+            global_inpc_labels.append(date.strftime('%Y-%m-%d'))
+
     context = {
-        'total_products': Product.objects.count(),
-        'total_points_of_sale': PointOfSale.objects.count(),
-        'total_carts': Cart.objects.count(),
+        'total_products': total_products,
+        'total_points_of_sale': total_points_of_sale,
+        'total_carts': total_carts,
         'inpc_last_4_months': inpc_last_4_months,
+        'product_type_labels': product_type_labels,
+        'product_type_data': product_type_data,
+        'inpc_by_product_labels': inpc_by_product_labels,
+        'inpc_by_product_data': inpc_by_product_data,
+        'global_inpc_labels': global_inpc_labels,
+        'global_inpc_data': global_inpc_data,
         'products': products,
-        'selected_product': selected_product,
-        'start_date': start_date,
-        'end_date': end_date,
-        'price_data': list(price_data),
+        'selected_product_id': selected_product_id,
+        'avg_prices_labels': avg_prices_labels,
+        'avg_prices_data': avg_prices_data,
     }
     return render(request, 'inpc/home.html', context)
 
@@ -70,58 +180,103 @@ def calculate_inpc_for_date(date):
     """
     Fonction utilitaire pour calculer l'INPC pour une date donnée.
     """
+    logger.debug(f"Calculating INPC for date: {date.strftime('%Y-%m-%d')}")
+    
     # Calculer le prix moyen de chaque produit pour la période donnée
     product_avg_prices = {}
+    month_start = date.replace(day=1)
+    month_end = (month_start + relativedelta(months=1)) - timedelta(days=1)
+    
+    logger.debug(f"Period: {month_start.strftime('%Y-%m-%d')} to {month_end.strftime('%Y-%m-%d')}")
+    
+    # Log le nombre total de produits
+    total_products = Product.objects.count()
+    logger.debug(f"Total number of products: {total_products}")
+    
+    # Récupérer tous les prix valides pour la période
+    valid_prices = ProductPrice.objects.filter(
+        date_from__lte=month_end,
+        date_to__isnull=True
+    ) | ProductPrice.objects.filter(
+        date_from__lte=month_end,
+        date_to__gte=month_start
+    )
+    
+    logger.debug(f"Total valid prices found: {valid_prices.count()}")
+    
+    # Calculer le prix moyen par produit
     for product in Product.objects.all():
-        # Récupérer les prix du produit dans tous les points de vente pour la période donnée
-        avg_price = ProductPrice.objects.filter(
-            product=product,
-            date_from__lte=date,
-            date_to__gte=date
-        ).aggregate(Avg('value'))['value__avg']
-
+        product_prices = valid_prices.filter(product=product)
+        avg_price = product_prices.aggregate(Avg('value'))['value__avg']
+        
+        logger.debug(f"Product {product.id} ({product.name}): Found {product_prices.count()} prices, Average = {avg_price}")
+        
         if avg_price is not None:
             product_avg_prices[product.id] = avg_price
 
-    # Si aucun prix n'est trouvé, retourner 0
     if not product_avg_prices:
+        logger.warning(f"No average prices found for {date.strftime('%Y-%m')}, returning 0.")
         return 0
 
-    # Calculer l'INPC pour chaque panier
+    logger.debug(f"Number of products with valid prices: {len(product_avg_prices)}")
+
+    # Récupérer tous les produits de panier valides pour la période
+    valid_cart_products = CartProduct.objects.filter(
+        date_from__lte=month_end,
+        date_to__isnull=True
+    ) | CartProduct.objects.filter(
+        date_from__lte=month_end,
+        date_to__gte=month_start
+    )
+    
+    logger.debug(f"Total valid cart products found: {valid_cart_products.count()}")
+
+    # Calculate INPC for each cart
     cart_inpc = {}
+    total_carts = Cart.objects.count()
+    logger.debug(f"Total number of carts: {total_carts}")
+    
     for cart in Cart.objects.all():
+        cart_products = valid_cart_products.filter(cart=cart)
+        logger.debug(f"Cart {cart.id} ({cart.name}): Found {cart_products.count()} valid products")
+        
         total_weighted_price = 0
         total_weight = 0
-
-        # Récupérer les produits du panier pour la période donnée
-        cart_products = CartProduct.objects.filter(
-            cart=cart,
-            date_from__lte=date,
-            date_to__gte=date
-        )
 
         for cart_product in cart_products:
             product_id = cart_product.product.id
             if product_id in product_avg_prices:
-                total_weighted_price += product_avg_prices[product_id] * cart_product.weight
-                total_weight += cart_product.weight
+                price = product_avg_prices[product_id]
+                weight = cart_product.weight
+                total_weighted_price += price * weight
+                total_weight += weight
+                logger.debug(f"Cart {cart.id}, Product {product_id}: Price={price}, Weight={weight}")
 
-        # Calculer l'INPC du panier
         if total_weight > 0:
             cart_inpc[cart.id] = total_weighted_price / total_weight
+            logger.debug(f"Cart {cart.id}: INPC = {cart_inpc[cart.id]} (total_weight={total_weight})")
         else:
+            logger.warning(f"Cart {cart.id}: Total weight is 0 - Check if cart products exist and are valid for {date.strftime('%Y-%m')}")
             cart_inpc[cart.id] = 0
 
-    # Si aucun panier n'est trouvé, retourner 0
     if not cart_inpc:
+        logger.warning(f"No cart INPC found for {date.strftime('%Y-%m')}, returning 0.")
         return 0
 
-    # Calculer l'INPC global
-    return sum(cart_inpc.values()) / len(cart_inpc)
+    logger.debug(f"Number of carts with valid INPC: {len(cart_inpc)}")
+
+    # Calculate global INPC
+    global_inpc = sum(cart_inpc.values()) / len(cart_inpc)
+    logger.debug(f"Final Global INPC: {global_inpc}")
+    
+    return global_inpc
+
+
 @login_required
 def calculate_inpc(request):
     """
     Vue Django pour calculer l'INPC en fonction des données soumises par l'utilisateur.
+    Utilise 2019 comme année de base selon la méthodologie de l'INPC en Mauritanie.
     """
     if request.method == 'POST':
         try:
@@ -129,37 +284,47 @@ def calculate_inpc(request):
             year = int(request.POST.get('year'))
             date = datetime(year, month, 1)  # Créer un objet datetime pour le début du mois
 
-            # Année de base (2019)
+            # Année de base (2019) selon la méthodologie de l'INPC en Mauritanie
             base_year = 2019
-            base_date = datetime(base_year, 1, 1)
+            base_month = 1  # Janvier comme mois de base
+            base_date = datetime(base_year, base_month, 1)
 
             # Calculer l'INPC global pour l'année de base (2019)
             base_inpc = calculate_inpc_for_date(base_date)
+            
+            # Log pour le débogage
+            logger.debug(f"Base INPC (2019-01): {base_inpc}")
 
             # Calculer l'INPC global pour la période donnée
             current_inpc = calculate_inpc_for_date(date)
+            
+            # Log pour le débogage
+            logger.debug(f"Current INPC ({date.strftime('%Y-%m')}): {current_inpc}")
 
             # Normaliser l'INPC global par rapport à l'année de base
             if base_inpc > 0:
                 inpc_global = (current_inpc / base_inpc) * 100  # Base 100 = 2019
+                logger.debug(f"Calculated Global INPC: {inpc_global}")
             else:
+                logger.warning("Base INPC is 0 for 2019-01. Please ensure there is price data for January 2019")
                 inpc_global = 0
 
             # Préparer le contexte pour le template
             context = {
-                'inpc': inpc_global,
+                'inpc': round(inpc_global, 2),  # Arrondir à 2 décimales
                 'month': month,
                 'year': year,
+                'base_year': base_year
             }
             return render(request, 'inpc/inpc_result.html', context)
 
+        except ValueError as e:
+            messages.error(request, f"Erreur de format : Veuillez vérifier le mois et l'année saisis. {str(e)}")
         except Exception as e:
+            logger.error(f"Erreur lors du calcul de l'INPC: {str(e)}")
             messages.error(request, f"Erreur lors du calcul de l'INPC : {str(e)}")
-            return redirect('calculate_inpc')
-
-    # Si la méthode n'est pas POST, afficher le formulaire
-    current_year = datetime.now().year
-    return render(request, 'inpc/inpc_form.html', {'current_year': current_year})
+    
+    return render(request, 'inpc/inpc_form.html')
 
 @login_required
 def import_export_data(request):
@@ -821,13 +986,13 @@ from chartjs.views.columns import BaseColumnsHighChartsView
 from .models import Product, ProductPrice, PointOfSale, ProductType
 
 @login_required
-def dashboard(request):
+def product_inpc_line_chart(request):
+    """Vue pour afficher le graphique de l'INPC par produit"""
     products = Product.objects.all()
     context = {
         'products': products,
     }
-    return render(request, 'inpc/dashboard.html', context)
-
+    return render(request, 'inpc/product_inpc_line_chart.html', context)
 
 class ProductTypePieChart(BaseLineChartView):
     def get_labels(self):
@@ -934,12 +1099,8 @@ class GlobalINPCLineChart(BaseLineChartView):
         return [inpc_values]
 
 
-# ✅ Ensure these are properly defined
+# Ensure these are properly defined
 
 avg_product_price_by_pos_chart = AvgProductPriceByPOSChart.as_view()
-product_inpc_line_chart = ProductINPCLineChart.as_view()
-global_inpc_line_chart = GlobalINPCLineChart.as_view()
-
-
-
-
+product_inpc_line_chart_view = ProductINPCLineChart.as_view()
+global_inpc_line_chart_view = GlobalINPCLineChart.as_view()
