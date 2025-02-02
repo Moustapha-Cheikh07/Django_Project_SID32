@@ -45,53 +45,11 @@
             </div>
 
             <!-- Historical Comparison -->
-            <div class="card mt-4">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">
-                        <i class="fas fa-history me-2"></i>Comparaison Historique
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="inpcChart"></canvas>
-                </div>
+            
             </div>
         </div>
     </div>
 </div>
 
-{% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Sample historical data - replace with actual data
-    const ctx = document.getElementById('inpcChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun'],
-            datasets: [{
-                label: 'INPC ' + {{ year }},
-                data: [{{ inpc }}, {{ inpc }}-0.5, {{ inpc }}+0.3, {{ inpc }}-0.2, {{ inpc }}+0.4, {{ inpc }}],
-                borderColor: 'rgb(75, 192, 192)',
-                tension: 0.1
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Évolution de l\'INPC'
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: false
-                }
-            }
-        }
-    });
-});
-</script>
-{% endblock %}
+
 {% endblock %}
